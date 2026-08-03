@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0f0e1a;
+  --background-secondary: #1a1833;
+  --foreground: #e8e6f0;
+  --muted: #9b96b0;
+  --border: #2a2744;
+  --accent: #7c5cff;
+  --accent-soft: rgba(124, 92, 255, 0.12);
+  --card-attack: #e5484d;
+  --card-skill: #3b82f6;
+  --card-power: #d4a017;
+  --card-curse: #8b5cf6;
+  --card-status: #6b6680;
+  --card-task: #10b981;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-card-attack: var(--card-attack);
+  --color-card-skill: var(--card-skill);
+  --color-card-power: var(--card-power);
+  --color-card-curse: var(--card-curse);
+  --color-card-status: var(--card-status);
+  --color-card-task: var(--card-task);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}

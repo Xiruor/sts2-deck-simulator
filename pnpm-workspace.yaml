@@ -1,0 +1,7 @@
+# pnpm 11 构建脚本白名单
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+  prisma: true
+  '@prisma/engines': true
+  esbuild: true

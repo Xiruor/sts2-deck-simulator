@@ -1,0 +1,173 @@
+// ============================================================
+// 杀戮尖塔2 牌组模拟器 —— Prisma Schema（MySQL）
+// 6 张表：Character（角色）/ Card（卡牌）/ Deck（牌组）/
+//         DeckCard（牌组-卡牌关联）/ Relic（遗物）/ User（用户）
+// ============================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ------------------------------------------------------------
+// 枚举定义
+// ------------------------------------------------------------
+
+// 卡牌类型
+enum CardType {
+  ATTACK // 攻击
+  SKILL // 技能
+  POWER // 能力
+  STATUS // 状态
+  CURSE // 诅咒
+  QUEST // 任务
+}
+
+// 卡牌稀有度
+enum CardRarity {
+  BASIC // 基础（初始牌组）
+  COMMON // 普通
+  UNCOMMON // 罕见
+  RARE // 稀有
+  SPECIAL // 特殊
+  ANCIENT // 先古之民
+  EVENT // 事件
+  CURSE // 诅咒
+  QUEST // 任务
+  STATUS // 状态
+}
+
+// 遗物稀有度
+enum RelicRarity {
+  COMMON // 普通
+  UNCOMMON // 罕见
+  RARE // 稀有
+  BOSS // 首领
+}
+
+// 用户角色
+enum Role {
+  ADMIN // 管理员（可编辑卡牌/遗物数据）
+  VIEWER // 只读用户
+}
+
+// ------------------------------------------------------------
+// 1. Character —— 角色
+// ------------------------------------------------------------
+model Character {
+  id          Int      @id @default(autoincrement()) // 自增主键
+  name        String // 角色名，如"铁甲战士""静默猎人"等
+  hp          Int // 基础生命值
+  color       String // 主题色，用于 UI 标识（如 "#7c5cff"）
+  coverImage  String // 封面图 URL
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cards  Card[]
+  decks  Deck[]
+  relics Relic[]
+}
+
+// ------------------------------------------------------------
+// 2. Card —— 卡牌
+// ------------------------------------------------------------
+model Card {
+  id                   Int        @id @default(autoincrement()) // 自增主键
+  slug                 String     @unique // 英文 slug，如 "strike_ironclad"
+  name                 String // 卡牌名（中文）
+  nameEn               String // 英文名（如 "STRIKE_IRONCLAD"）
+  cost                 Int? // 费用，-1 表示 X 费；null 表示不可打出（诅咒/任务等无费用牌）
+  type                 CardType // 卡牌类型
+  rarity               CardRarity // 稀有度
+  damage               Int? // 伤害值，可空
+  block                Int? // 格挡值，可空
+  description          String // 卡牌描述文本
+  upgradedDescription  String?    @db.Text // 升级后的描述文本
+  exhaust              Boolean    @default(false) // 是否消耗
+  imageNormal          String? // 基础态图片 URL
+  imageUpgraded        String? // 升级态图片 URL
+  poolId               Int // 所属卡池（关联角色）
+  upgradedData         Json? // 升级后的数据差异，如 { "damage": 9, "description": "造成9点伤害" }
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  character Character @relation(fields: [poolId], references: [id]) // 所属角色（卡池）
+  deckCards DeckCard[] // 在牌组中的关联记录
+
+  @@index([poolId]) // 按卡池（角色）筛选
+  @@index([type]) // 按类型筛选
+  @@index([rarity]) // 按稀有度筛选
+  @@index([cost]) // 按费用筛选
+}
+
+// ------------------------------------------------------------
+// 3. Deck —— 牌组
+// ------------------------------------------------------------
+model Deck {
+  id          Int      @id @default(autoincrement()) // 自增主键
+  name        String // 牌组名称
+  characterId Int // 关联角色
+  userId      Int? // 关联用户，可空（匿名用户也可保存到本地）
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id]) // 所属角色
+  user      User?     @relation(fields: [userId], references: [id]) // 所属用户（可空）
+  deckCards DeckCard[] // 牌组中的卡牌明细
+
+  @@index([userId]) // 按用户查询
+  @@index([characterId]) // 按角色查询
+}
+
+// ------------------------------------------------------------
+// 4. DeckCard —— 牌组-卡牌关联表
+// ------------------------------------------------------------
+model DeckCard {
+  deckId     Int // 外键，关联 Deck
+  cardId     Int // 外键，关联 Card
+  quantity   Int     @default(1) // 该卡牌数量，1-5
+  isUpgraded Boolean @default(false) // 是否已升级
+
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade) // 删除牌组时级联清理明细
+  card Card @relation(fields: [cardId], references: [id])
+
+  @@id([deckId, cardId]) // 联合主键：同一张卡在一副牌组中一行记录
+  @@index([cardId]) // 反查卡牌被哪些牌组使用
+}
+
+// ------------------------------------------------------------
+// 5. Relic —— 遗物
+// ------------------------------------------------------------
+model Relic {
+  id          Int         @id @default(autoincrement()) // 自增主键
+  name        String // 遗物名
+  rarity      RelicRarity // 稀有度
+  description String // 效果描述
+  effect      Json? // 效果数据结构，用于战斗模拟，如 { "type": "DRAW", "value": 2, "timing": "TURN_START" }
+  characterId Int? // 关联角色，可空（通用遗物为 null）
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  character Character? @relation(fields: [characterId], references: [id]) // 专属角色（可空）
+
+  @@index([characterId]) // 按角色查询专属遗物
+}
+
+// ------------------------------------------------------------
+// 6. User —— 用户（管理后台用）
+// ------------------------------------------------------------
+model User {
+  id        Int      @id @default(autoincrement()) // 自增主键
+  email     String   @unique // 邮箱，唯一（登录标识）
+  name      String // 用户名
+  password  String // 密码（加密存储，bcrypt 等哈希）
+  role      Role     @default(VIEWER) // 用户角色
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  decks Deck[] // 用户保存的牌组
+}
