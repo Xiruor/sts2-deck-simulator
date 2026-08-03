@@ -1,6 +1,6 @@
+import { Suspense } from "react";
 import { prisma } from "@/lib/db";
-import CardExplorer from "@/components/cards/CardExplorer";
-import type { CardGridItem } from "@/components/cards/CardGrid";
+import CardGrid, { type CardGridItem } from "@/components/cards/CardGrid";
 import type { CardRarity, CardType } from "@/generated/prisma/client";
 
 // 服务端渲染时直接查询数据库
@@ -53,7 +53,13 @@ export default async function CardsPage() {
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-8">
-      <CardExplorer cards={items} />
+      <Suspense
+        fallback={
+          <p className="py-12 text-center text-sm text-muted-foreground">加载中...</p>
+        }
+      >
+        <CardGrid cards={items} />
+      </Suspense>
 
       <footer className="mt-10 border-t border-border pt-4 text-center text-xs text-muted-foreground">
         本项目为非官方粉丝工具，卡牌图片版权归Mega Crit, LLC所有。图片来源于公开Wiki，仅用于信息参考。如有侵权请联系移除。

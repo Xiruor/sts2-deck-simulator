@@ -208,7 +208,7 @@ const TYPE_FALLBACK_BG: Record<GameCardType, string> = {
 // 三种尺寸
 const SIZE_CLASSES = {
   sm: {
-    card: "w-full h-44",
+   card: "w-full h-44",
     crystal: "h-5 w-5 text-[11px]",
     name: "text-xs",
     desc: "text-[10px]",
@@ -257,7 +257,7 @@ function highlightDescription(text: string) {
       KEYWORD_RE.lastIndex++;
       continue;
     }
-    const { color } = KEYWORD_COLORS.find((k) => k.test(m[0])) ?? {};
+    const { color } = KEYWORD_COLORS.find((k) => k.test(m[0])) ?? {}; 
     if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index));
     parts.push(
       color ? (
