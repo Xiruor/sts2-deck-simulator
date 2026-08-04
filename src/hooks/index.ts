@@ -1,2 +1,1 @@
-export * from "./useDeck";
-export * from "./useBattle";
+export * from "./useCardCatalog";

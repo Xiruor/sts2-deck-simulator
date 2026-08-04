@@ -81,3 +81,26 @@ export const pools: { id: string; name: string }[] = [
   { id: "ancient", name: "先古之民" },
   { id: "special", name: "特殊" },
 ];
+
+// ------------------------------------------------------------
+// 路由 slug / 数据库 ID 映射（与 prisma/seed.ts 的角色 id 保持一致）
+// ------------------------------------------------------------
+
+/** 角色 slug → 数据库 Character.id（seed 自增顺序） */
+export const CHARACTER_SLUG_TO_DB_ID: Record<string, number> = {
+  ironclad: 1,
+  silent: 2,
+  defect: 3,
+  regent: 4,
+  necrobinder: 5,
+};
+
+/** 数据库 Character.name → 路由 slug */
+export const CHARACTER_NAME_TO_SLUG: Record<string, string> = {
+  铁甲战士: "ironclad",
+  静默猎人: "silent",
+  静默猎手: "silent",
+  故障机器人: "defect",
+  储君: "regent",
+  亡灵契约师: "necrobinder",
+};

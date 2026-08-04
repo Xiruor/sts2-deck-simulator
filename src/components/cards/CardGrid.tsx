@@ -20,6 +20,7 @@ export interface CardGridItem {
   character: string;
   description: string;
   upgradedDescription?: string;
+  upgradedCost?: number;
   exhaust?: boolean;
   imageNormal?: string;
   imageUpgraded?: string;
@@ -91,6 +92,7 @@ export default function CardGrid({ cards }: { cards: CardGridItem[] }) {
       types: parseList(searchParams.get("type")),
       rarities: parseList(searchParams.get("rarity")),
       costs: parseList(searchParams.get("cost")),
+      upgraded: searchParams.get("up") === "1" ? "1" : "0",
     }),
     [searchParams]
   );
@@ -105,6 +107,7 @@ export default function CardGrid({ cards }: { cards: CardGridItem[] }) {
       if (next.types.length) params.set("type", next.types.join(","));
       if (next.rarities.length) params.set("rarity", next.rarities.join(","));
       if (next.costs.length) params.set("cost", next.costs.join(","));
+      if (next.upgraded === "1") params.set("up", "1");
       const qs = params.toString();
       router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false });
     },
@@ -174,10 +177,26 @@ export default function CardGrid({ cards }: { cards: CardGridItem[] }) {
                 {character}
                 <span className="text-sm font-normal text-muted-foreground">({items.length})</span>
               </h2>
-              <div className="grid max-h-[500px] grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2 overflow-y-auto p-1">
-                {items.map((card) => (
-                  <GameCard key={card.slug} {...card} size="sm" />
-                ))}
+              {/* 手机2列 / 小平板3列 / 桌面(≥768px)6列；每列宽决定卡牌大小，cqw 随之等比例缩放 */}
+              <div className="grid grid-cols-2 gap-x-[2.44%] gap-y-2 sm:grid-cols-3 md:grid-cols-6">
+                {items.map((card) => {
+                  // 仅可升级卡（有升级描述）进入升级态
+                  const upgraded =
+                    state.upgraded === "1" && card.upgradedDescription !== undefined;
+                  return (
+                    <div
+                      key={card.slug}
+                      className="@container transition-all duration-150 hover:-translate-y-1.5 hover:scale-[1.03] hover:z-10 hover:shadow-2xl"
+                    >
+                      <GameCard
+                        {...card}
+                        size="xl"
+                        upgraded={upgraded}
+                        cost={upgraded ? (card.upgradedCost ?? card.cost) : card.cost}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </section>
           ))}

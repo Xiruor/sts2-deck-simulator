@@ -24,6 +24,7 @@ export interface FilterState {
   types: string[];
   rarities: string[];
   costs: string[];
+  upgraded: "0" | "1"; // 0=升级前（默认），1=升级后
 }
 
 // 可切换的筛选 chip
@@ -97,18 +98,11 @@ export default function CardFilter({
     }
   };
 
-  const isFiltering =
-    state.search.trim() !== "" ||
-    state.character !== "全部" ||
-    state.types.length > 0 ||
-    state.rarities.length > 0 ||
-    state.costs.length > 0;
-
   const resetAll = () =>
-    onChange({ search: "", character: "全部", types: [], rarities: [], costs: [] });
+    onChange({ search: "", character: "全部", types: [], rarities: [], costs: [], upgraded: "0" });
 
   return (
-    <div className="mb-8 space-y-2 rounded-lg border border-border bg-card p-3 shadow-sm">
+    <div className="mb-8 space-y-2 rounded-lg border border-border bg-background-secondary p-3 shadow-sm">
       <div className="flex flex-wrap items-center gap-3">
         {/* 搜索 */}
         <input
@@ -132,16 +126,14 @@ export default function CardFilter({
             ))}
           </select>
         </div>
-        {/* 重置 */}
-        {isFiltering && (
-          <button
-            type="button"
-            onClick={resetAll}
-            className="ml-auto text-xs text-blue-500 hover:underline"
-          >
-            重置筛选
-          </button>
-        )}
+        {/* 重置：常驻显示，带边框 */}
+        <button
+          type="button"
+          onClick={resetAll}
+          className="ml-auto rounded-md border border-border bg-background px-2.5 py-1 text-xs text-blue-400 transition-colors hover:bg-blue-500/10 hover:text-blue-300"
+        >
+          重置筛选
+        </button>
       </div>
 
       <MultiSelectGroup
@@ -162,6 +154,16 @@ export default function CardFilter({
         selected={state.costs}
         onToggle={(v) => toggleList("costs", v)}
       />
+      {/* 升级（二选一，默认升级前） */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="w-12 shrink-0 text-xs font-medium text-muted-foreground">升级</span>
+        <Chip active={state.upgraded === "0"} onClick={() => onChange({ upgraded: "0" })}>
+          升级前
+        </Chip>
+        <Chip active={state.upgraded === "1"} onClick={() => onChange({ upgraded: "1" })}>
+          升级后
+        </Chip>
+      </div>
     </div>
   );
 }

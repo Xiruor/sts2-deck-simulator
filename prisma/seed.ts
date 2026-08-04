@@ -61,6 +61,8 @@ async function main() {
   for (const { characterId, cards } of cardSets) {
     const data = cards.map((c) => ({
       id: c.id,
+      slug: `card-${c.id}`,
+      nameEn: c.name,
       name: c.name,
       cost: c.cost,
       type: c.type,

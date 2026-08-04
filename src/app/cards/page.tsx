@@ -37,33 +37,42 @@ export default async function CardsPage() {
   });
 
   // 转成前端组件所需的数据结构（保持查询顺序）
-  const items: CardGridItem[] = cards.map((card) => ({
-    slug: card.slug,
-    name: card.name,
-    cost: card.cost,
-    type: TYPE_LABELS[card.type],
-    rarity: RARITY_LABELS[card.rarity],
-    character: card.character.name,
-    description: card.description,
-    upgradedDescription: card.upgradedDescription ?? undefined,
-    exhaust: card.exhaust,
-    imageNormal: card.imageNormal ?? undefined,
-    imageUpgraded: card.imageUpgraded ?? undefined,
-  }));
+  const items: CardGridItem[] = cards.map((card) => {
+    // 升级数据差异：目前存升级后费用 { cost: number }
+    const upgradedData = card.upgradedData as { cost?: number } | null;
+    return {
+      slug: card.slug,
+      name: card.name,
+      cost: card.cost,
+      type: TYPE_LABELS[card.type],
+      rarity: RARITY_LABELS[card.rarity],
+      character: card.character.name,
+      description: card.description,
+      upgradedDescription: card.upgradedDescription ?? undefined,
+      upgradedCost: upgradedData?.cost ?? undefined,
+      exhaust: card.exhaust,
+      imageNormal: card.imageNormal ?? undefined,
+      imageUpgraded: card.imageUpgraded ?? undefined,
+    };
+  });
 
   return (
-    <main className="mx-auto max-w-[1500px] px-4 py-8">
-      <Suspense
-        fallback={
-          <p className="py-12 text-center text-sm text-muted-foreground">加载中...</p>
-        }
-      >
-        <CardGrid cards={items} />
-      </Suspense>
-
-      <footer className="mt-10 border-t border-border pt-4 text-center text-xs text-muted-foreground">
-        本项目为非官方粉丝工具，卡牌图片版权归Mega Crit, LLC所有。图片来源于公开Wiki，仅用于信息参考。如有侵权请联系移除。
-      </footer>
-    </main>
+    <div className="relative">
+      {/* 背景层：纯色，与其他页面最底部背景色一致（bg-background） */}
+      <div className="fixed inset-0 -z-10 bg-background" />
+      {/* 容器：水平宽度由 1500px 减去间距节约出的 160px 得到 1340px */}
+      <div className="mx-auto max-w-[1340px] px-4 py-8">
+        {/* 容器：background-secondary 与背景区分，协调不别扭 */}
+        <div className="rounded-2xl bg-background-secondary p-4 shadow-2xl">
+          <Suspense
+            fallback={
+              <p className="py-12 text-center text-sm text-muted-foreground">加载中...</p>
+            }
+          >
+            <CardGrid cards={items} />
+          </Suspense>
+        </div>
+      </div>
+    </div>
   );
 }

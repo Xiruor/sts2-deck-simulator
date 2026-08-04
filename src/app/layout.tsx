@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/Navbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,9 +27,37 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased`}
       >
-        {children}
+        <Navbar />
+        <main className="flex-1">{children}</main>
+
+        {/* 页脚：管理后台入口（不放主导航）+ GitHub 链接 + 版权声明 */}
+        <footer className="border-t border-border">
+          <div className="mx-auto flex max-w-[1500px] flex-col items-center gap-2 px-4 py-5 text-xs text-muted sm:flex-row sm:justify-between">
+            <p className="text-center sm:text-left">
+              本项目为非官方粉丝工具，卡牌图片版权归Mega Crit, LLC所有。图片来源于公开Wiki，仅用于信息参考。如有侵权请联系移除。
+            </p>
+            <div className="flex shrink-0 items-center gap-4">
+              <a
+                href="/admin"
+                className="text-muted transition-colors hover:text-accent"
+              >
+                管理后台
+              </a>
+              {/* TODO: 替换为项目实际仓库地址 */}
+              <a
+                href="https://github.com/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted transition-colors hover:text-accent"
+              >
+                GitHub
+              </a>
+              <span className="text-muted/60">© {new Date().getFullYear()} STS2 Deck Simulator</span>
+            </div>
+          </div>
+        </footer>
       </body>
     </html>
   );

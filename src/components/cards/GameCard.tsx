@@ -37,7 +37,7 @@ export interface GameCardProps {
   upgradedDescription?: string;
   exhaust?: boolean;
   upgraded?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   isSelected?: boolean;
   imageNormal?: string;
   imageUpgraded?: string;
@@ -188,13 +188,13 @@ function resolveCardStyle(
 // 类型 emoji（图片加载失败时的占位图标）
 const TYPE_EMOJI: Record<GameCardType, string> = {
   攻击: "\u2694\uFE0F",
-  技能: "\u2728", 
+  技能: "\u2728",
   能力: "\uD83C\uDF00",
   诅咒: "\uD83D\uDC80",
   状态: "\uD83D\uDD17",
   任务: "\uD83D\uDDFA\uFE0F",
-};     
-    
+};
+
 // 占位渐变背景
 const TYPE_FALLBACK_BG: Record<GameCardType, string> = {
   攻击: "from-red-900/70 to-red-950",
@@ -203,27 +203,61 @@ const TYPE_FALLBACK_BG: Record<GameCardType, string> = {
   诅咒: "from-purple-900/70 to-purple-950",
   状态: "from-gray-800 to-gray-950",
   任务: "from-amber-900/70 to-amber-950",
-}; 
+};
 
 // 三种尺寸
 const SIZE_CLASSES = {
   sm: {
-   card: "w-full h-44",
+    card: "w-full h-44",
+    frame: "p-1",
+    art: "border-4",
+    namePad: "px-1 pt-1",
+    descPad: "px-1.5 py-1",
+    infoPad: "px-1 py-0.5",
     crystal: "h-5 w-5 text-[11px]",
+    crystalPos: "left-1 top-1",
     name: "text-xs",
     desc: "text-[10px]",
     info: "text-[9px]",
   },
   md: {
     card: "w-full h-60",
+    frame: "p-1",
+    art: "border-4",
+    namePad: "px-1 pt-1",
+    descPad: "px-1.5 py-1",
+    infoPad: "px-1 py-0.5",
     crystal: "h-6 w-6 text-xs",
+    crystalPos: "left-1 top-1",
     name: "text-sm",
     desc: "text-[11px]",
     info: "text-[10px]",
   },
   lg: {
     card: "w-full h-80",
+    frame: "p-1",
+    art: "border-4",
+    namePad: "px-1 pt-1",
+    descPad: "px-1.5 py-1",
+    infoPad: "px-1 py-0.5",
     crystal: "h-7 w-7 text-sm",
+    crystalPos: "left-1 top-1",
+    name: "text-base",
+    desc: "text-xs",
+    info: "text-[11px]",
+  },
+  // 总览页用：宽由网格决定，高按卡牌比例（250:347 ≈ 0.72）自适应；
+  // 卡牌容器/插画随宽度响应式缩放（cqw），但名字/描述/费用水晶保持固定大小，
+  // 避免大屏下文字过大导致描述被截断
+  xl: {
+    card: "w-full aspect-[0.72]",
+    frame: "p-[3cqw]",
+    art: "border-[3cqw]",
+    namePad: "px-[3cqw] pt-[3cqw]",
+    descPad: "px-[4.5cqw] py-[3cqw]",
+    infoPad: "px-[3cqw] py-[1.5cqw]",
+    crystal: "h-8 w-8 text-base",
+    crystalPos: "left-1 top-1",
     name: "text-base",
     desc: "text-xs",
     info: "text-[11px]",
@@ -232,12 +266,12 @@ const SIZE_CLASSES = {
 
 /**
  * 关键词高亮：正则匹配描述文本
- * - 伤害数值 → 红色 #f87171  
+ * - 伤害数值 → 红色 #f87171
  * - 格挡 → 蓝色  #60a5fa
  * - 消耗 / 保留 / 固有 → 紫色 #a78bfa
  * - 抽牌 / 弃牌 → 青色 #22d3ee
  */
-const KEYWORD_RE = /(\d+点伤害|\d+点格挡|伤害|格挡|消耗|保留|固有|抽牌|弃牌|\d+)/g;
+const KEYWORD_RE = /(\d+点辉星|\d+点能量|辉星|能量|\d+点伤害|\d+点格挡|伤害|格挡|消耗|保留|固有|抽牌|弃牌|\d+)/g;
 
 const KEYWORD_COLORS: { test: (s: string) => boolean; color: string }[] = [
   { test: (s) => s.includes("伤害"), color: "#f87171" },
@@ -246,28 +280,61 @@ const KEYWORD_COLORS: { test: (s: string) => boolean; color: string }[] = [
   { test: (s) => s === "抽牌" || s === "弃牌", color: "#22d3ee" },
 ];
 
+// 内联资源图标（仿 wiki）：辉星 = 星星，能量 = 闪电
+function ResourceIcon({ type, value }: { type: "辉星" | "能量"; value?: number }) {
+  return (
+    <span className="mx-0.5 inline-flex translate-y-[1px] items-center gap-0.5 align-middle">
+      {value !== undefined && (
+        <span className="text-[0.92em] font-bold leading-none text-gray-200">{value}</span>
+      )}
+      {type === "辉星" ? (
+        <svg viewBox="0 0 16 16" className="h-[1.15em] w-[1.15em]" aria-label="辉星">
+          <path d="M8 1.2 L9.6 5.6 L14.4 6.4 L11 9.7 L12 14.6 L8 12.3 L4 14.6 L5 9.7 L1.6 6.4 L6.4 5.6 Z" fill="#fde68a" stroke="#b45309" strokeWidth="0.7" strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 16 16" className="h-[1.15em] w-[1.15em]" aria-label="能量">
+          <path d="M9.2 1.2 L3.4 9 L7 9 L6 14.8 L12.8 6.4 L9.2 6.4 Z" fill="#fbbf24" stroke="#92400e" strokeWidth="0.7" strokeLinejoin="round" />
+        </svg>
+      )}
+    </span>
+  );
+}
 function highlightDescription(text: string) {
   const parts: ReactNode[] = [];
   let lastIndex = 0;
   let index = 0;
   KEYWORD_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = KEYWORD_RE.exec(text)) !== null) {  
-    if (m[0].length === 0) {
+  while ((m = KEYWORD_RE.exec(text)) !== null) {
+    // while 条件已保证非空，但闭包内类型收窄会失效，先存入常量
+    const match = m;
+    if (match[0].length === 0) {
       KEYWORD_RE.lastIndex++;
       continue;
     }
-    const { color } = KEYWORD_COLORS.find((k) => k.test(m[0])) ?? {}; 
+    const { color } = KEYWORD_COLORS.find((k) => k.test(match[0])) ?? {};
     if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index));
-    parts.push(
-      color ? (
-        <span key={index++} style={{ color }}>
-          {m[0]}
-        </span>
-      ) : (
-        m[0]
-      )
-    );
+    if (match[0].includes("辉星") || match[0].includes("能量")) {
+      const isStar = match[0].includes("辉星");
+      const numMatch = match[0].match(/\d+/);
+      parts.push(
+        <ResourceIcon
+          key={index++}
+          type={isStar ? "辉星" : "能量"}
+          value={numMatch ? Number(numMatch[0]) : undefined}
+        />
+      );
+    } else {
+      parts.push(
+        color ? (
+          <span key={index++} style={{ color }}>
+            {m[0]}
+          </span>
+        ) : (
+          m[0]
+        )
+      );
+    }
     lastIndex = m.index + m[0].length;
   }
   if (lastIndex < text.length) parts.push(text.slice(lastIndex));
@@ -307,8 +374,10 @@ function GameCardInner({
       title={`${name} · ${character}`}
       onClick={onClick}
       className={cn(
-        // 外层：加粗渐变边框（模拟手绘渐变 + 边缘加深），4px
-        "relative rounded-lg p-1 transition-transform duration-150",
+        // 外层：加粗渐变边框（模拟手绘渐变 + 边缘加深）
+        // cqw 容器查询基准由使用处提供（CardGrid 包裹层加 @container）
+        "relative rounded-lg transition-transform duration-150",
+        s.frame,
         style.frame,
         style.glow ?? "shadow-md",
         onClick && "cursor-pointer hover:scale-105 hover:z-10",
@@ -322,8 +391,8 @@ function GameCardInner({
           s.card
         )}
       >
-        {/* 插画区：加粗围边（4px），贴边无间隙 */}
-        <div className={cn("relative h-[44%] w-full shrink-0 overflow-hidden border-4", style.artBorder)}>
+        {/* 插画区：加粗围边，贴边无间隙 */}
+        <div className={cn("relative h-[44%] w-full shrink-0 overflow-hidden", style.artBorder, s.art)}>
           {showFallback ? (
             <div
               className={cn(
@@ -345,21 +414,29 @@ function GameCardInner({
           )}
         </div>
 
-        {/* 卡名（升级态加 "+"） */}
-        <div className={cn("shrink-0 px-1 pt-1 text-center font-semibold leading-tight", s.name)}>
+        {/* 卡名（升级态：变绿并加绿色 "+"） */}
+        <div
+          className={cn(
+            "shrink-0 text-center font-semibold leading-tight",
+            s.namePad,
+            s.name,
+            upgraded && "text-green-400"
+          )}
+        >
           {name}
-          {upgraded && <span className="text-amber-400">+</span>}
+          {upgraded && <span className="text-green-400">+</span>}
         </div>
 
         {/* 描述区 */}
-        <div className={cn("flex-1 overflow-hidden px-1.5 py-1 leading-tight", s.desc)}>
+        <div className={cn("flex-1 overflow-hidden leading-tight", s.descPad, s.desc)}>
           {body}
         </div>
 
         {/* 底部类型/稀有度信息条 */}
         <div
           className={cn(
-            "shrink-0 border-t border-white/10 bg-black/30 px-1 py-0.5 text-center text-gray-300",
+            "shrink-0 border-t border-white/10 bg-black/30 text-center text-gray-300",
+            s.infoPad,
             s.info
           )}
         >
@@ -367,25 +444,19 @@ function GameCardInner({
         </div>
       </div>
 
-      {/* 费用水晶（左上） */}
+      {/* 费用水晶（左上，位置随卡牌宽度等比例） */}
       {cost !== null && (
         <div
           className={cn(
-            "absolute left-1 top-1 z-10 flex items-center justify-center rounded-full",
+            "absolute z-10 flex items-center justify-center rounded-full",
             "bg-gradient-to-br font-bold shadow",
             style.crystal.bg,
             style.crystal.text,
+            s.crystalPos,
             s.crystal
           )}
         >
           {cost === -1 ? "X" : cost}
-        </div>
-      )}
-
-      {/* 升级标记（右上） */}
-      {upgraded && (
-        <div className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-xs font-bold text-black shadow">
-          +
         </div>
       )}
     </div>
