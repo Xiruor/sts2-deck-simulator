@@ -43,8 +43,24 @@ export interface Card {
   upgradedValues?: UpgradedValues | null;
 }
 
+/** 工作台自定义数值（覆盖卡牌基础值，用于战斗模拟） */
+export interface DeckCardValues {
+  /** 自定义攻击值（升级前） */
+  damage?: number | null;
+  /** 自定义格挡值（升级前） */
+  block?: number | null;
+  /** 自定义抽牌数（升级前） */
+  draw?: number | null;
+  /** 自定义攻击值（升级后） */
+  damageUp?: number | null;
+  /** 自定义格挡值（升级后） */
+  blockUp?: number | null;
+  /** 自定义抽牌数（升级后） */
+  drawUp?: number | null;
+}
+
 /** 牌组中的一张卡（含数量与升级态） */
-export interface DeckCardEntry {
+export interface DeckCardEntry extends DeckCardValues {
   cardId: string;
   count: number;
   upgraded: boolean;

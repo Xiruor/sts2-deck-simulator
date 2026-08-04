@@ -85,16 +85,18 @@ function mapCard(raw: ApiCard): CardInfo {
   };
 }
 
-export function useCardCatalog(characterSlug: string) {
+export function useCardCatalog(characterSlug?: string) {
   const [catalog, setCatalog] = useState<CardInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const dbId = CHARACTER_SLUG_TO_DB_ID[characterSlug];
+    // 未传角色 slug 时拉取全量卡池（卡牌总览口径），用于牌组工作台卡池区
+    const dbId = characterSlug ? CHARACTER_SLUG_TO_DB_ID[characterSlug] : undefined;
+    const query = dbId ? `?characterId=${dbId}&limit=1000` : "?limit=1000";
 
-    fetch(`/api/cards?characterId=${dbId}&limit=100`)
+    fetch(`/api/cards${query}`)
       .then((res) => res.json())
       .then((body: { data?: { cards?: ApiCard[] } }) => {
         if (cancelled) return;

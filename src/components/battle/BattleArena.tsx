@@ -14,6 +14,7 @@ import { useDeckStore } from "@/store/deckStore";
 import { characters } from "@/data/characters";
 import { useCardCatalog, type CardInfo } from "@/hooks/useCardCatalog";
 import GameCard from "@/components/cards/GameCard";
+import { effectiveBlock, effectiveDamage, effectiveDraw } from "@/lib/cardUtils";
 import { shuffle, cn } from "@/lib/utils";
 
 type Phase = "IDLE" | "DRAW_PHASE" | "PLAY_PHASE" | "ENEMY_PHASE" | "END_TURN";
@@ -112,6 +113,8 @@ export default function BattleArena() {
   const selectedCharacter = useDeckStore((s) => s.selectedCharacter);
   const { catalog } = useCardCatalog(selectedCharacter);
   const catalogMap = useMemo(() => new Map(catalog.map((c) => [String(c.id), c])), [catalog]);
+  // 牌组条目映射（含工作台自定义攻击/格挡/抽牌数值）
+  const entryMap = useMemo(() => new Map(deckCards.map((e) => [e.cardId, e])), [deckCards]);
 
   const char = characters.find((c) => c.id === selectedCharacter);
 
@@ -173,7 +176,7 @@ export default function BattleArena() {
     }
   }, [deckCards, resetPlayer, pushLog, char]);
 
-  /** 出牌：费用校验 → 结算伤害/格挡 → 移入弃牌堆或消耗堆 */
+  /** 出牌：费用校验 → 结算伤害/格挡/抽牌 → 移入弃牌堆或消耗堆 */
   const playCard = useCallback(
     (cardId: string) => {
       if (phase !== "PLAY_PHASE") return;
@@ -184,12 +187,18 @@ export default function BattleArena() {
         return;
       }
 
+      // 生效数值：优先取工作台自定义值（升级态取升级后值），否则用卡牌基础值
+      const entry = entryMap.get(cardId);
+      const damage = entry ? effectiveDamage(entry, info) ?? 0 : info.damage ?? 0;
+      const block = entry ? effectiveBlock(entry, info) ?? 0 : info.block ?? 0;
+      const draw = entry ? effectiveDraw(entry, info) : 0;
+
       setPlayerEnergy((e) => e - (info.cost ?? 0));
 
       // 伤害结算：基础伤害 + 力量，目标易伤 ×1.5，格挡抵消
-      if (info.damage && info.damage > 0) {
+      if (damage > 0) {
         setMonster((m) => {
-          let dmg = info.damage! + playerBuffs.strength;
+          let dmg = damage + playerBuffs.strength;
           if (monsterBuffs.vulnerable > 0) dmg = Math.floor(dmg * 1.5);
           const absorbed = Math.min(m.block, dmg);
           const dealt = Math.max(0, dmg - m.block);
@@ -201,11 +210,11 @@ export default function BattleArena() {
       }
 
       // 格挡结算：基础格挡 + 敏捷，脆弱时 ×0.75
-      if (info.block && info.block > 0) {
-        let block = info.block + playerBuffs.dexterity;
-        if (playerBuffs.frail > 0) block = Math.floor(block * 0.75);
-        setPlayerBlock((b) => b + block);
-        pushLog(`「${info.name}」获得 ${block} 点格挡。`);
+      if (block > 0) {
+        let gained = block + playerBuffs.dexterity;
+        if (playerBuffs.frail > 0) gained = Math.floor(gained * 0.75);
+        setPlayerBlock((b) => b + gained);
+        pushLog(`「${info.name}」获得 ${gained} 点格挡。`);
       }
 
       // 移入手牌外
@@ -216,8 +225,32 @@ export default function BattleArena() {
       } else {
         setDiscardPile((p) => [...p, cardId]);
       }
+
+      // 抽牌：从抽牌堆抽 draw 张，不足时把弃牌堆洗回抽牌堆
+      if (draw > 0) {
+        let src = drawPile;
+        if (drawPile.length < draw && discardPile.length > 0) {
+          src = shuffle([...drawPile, ...discardPile]);
+          setDiscardPile([]);
+          pushLog("弃牌堆洗入抽牌堆。");
+        }
+        const drawn = src.slice(0, Math.min(draw, src.length));
+        setDrawPile(src.slice(drawn.length));
+        setHand((h) => [...h, ...drawn]);
+        pushLog(`「${info.name}」抽取 ${drawn.length} 张牌。`);
+      }
     },
-    [phase, catalogMap, playerEnergy, playerBuffs, monsterBuffs, pushLog]
+    [
+      phase,
+      catalogMap,
+      entryMap,
+      playerEnergy,
+      playerBuffs,
+      monsterBuffs,
+      drawPile,
+      discardPile,
+      pushLog,
+    ]
   );
 
   /** 结束回合：弃手牌 → 敌人行动 → Buff 衰减 → 抽 5 张进入下一回合 */
@@ -394,6 +427,7 @@ export default function BattleArena() {
             {hand.map((id, idx) => {
               const info = catalogMap.get(id);
               if (!info) return null;
+              const entry = entryMap.get(id);
               const playable = canPlay(info);
               return (
                 <div
@@ -411,6 +445,7 @@ export default function BattleArena() {
                     description={info.description}
                     upgradedDescription={info.upgradedDescription}
                     exhaust={info.exhaust}
+                    upgraded={entry?.upgraded}
                     size="sm"
                     onClick={() => playCard(id)}
                   />

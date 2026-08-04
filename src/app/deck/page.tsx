@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * 牌组工作台（核心复合页面，Task 4）
- * - URL 参数 ?character={slug} 指定当前角色，?load={deckId} 从数据库加载方案
+ * 牌组工作台（核心复合页面）
+ * - URL 参数 ?character={slug} 指定当前角色，?load={deckId} 通过 /api/decks/:id 加载方案
+ * - 卡池区拉取全量卡池（与卡牌总览页口径一致），筛选栏与总览页完全一致
  * - 内嵌三个模块：拖拽组牌区（DeckWorkbench）+ 统计面板（DeckStats）+ 存档与分享（DeckSave）
  * - 角色、牌组数据通过 Zustand store 管理并持久化，与 /battle 共享
  */
@@ -10,10 +11,17 @@ import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDeckStore } from "@/store/deckStore";
 import { useCardCatalog } from "@/hooks/useCardCatalog";
-import { getDeckById } from "./actions";
+import type { DeckCardEntry } from "@/types/card";
 import DeckWorkbench from "@/components/deck/DeckWorkbench";
 import DeckStats from "@/components/deck/DeckStats";
 import DeckSave from "@/components/deck/DeckSave";
+
+interface LoadedDeckPayload {
+  id: number;
+  name: string;
+  characterSlug: string;
+  cards: DeckCardEntry[];
+}
 
 function DeckPageInner() {
   const router = useRouter();
@@ -26,23 +34,29 @@ function DeckPageInner() {
   const loadDeck = useDeckStore((s) => s.loadDeck);
   const loadedRef = useRef<string | null>(null);
 
-  const { catalog, loading } = useCardCatalog(character);
+  const { catalog, loading } = useCardCatalog();
 
   // URL 中的角色是唯一数据源，同步进 store
   useEffect(() => {
     if (selectedCharacter !== character) setCharacter(character);
   }, [character, selectedCharacter, setCharacter]);
 
-  // 处理 ?load={deckId}：拉取数据库方案并填充牌组
+  // 处理 ?load={deckId}：调用 GET /api/decks/:id 拉取牌组并填充
   useEffect(() => {
     if (!loadId || loadId === loadedRef.current) return;
     loadedRef.current = loadId;
-    getDeckById(Number(loadId)).then((deck) => {
-      if (!deck) return;
-      setCharacter(deck.characterSlug);
-      loadDeck(deck.cards);
-      router.replace(`/deck?character=${deck.characterSlug}`, { scroll: false });
-    });
+    fetch(`/api/decks/${Number(loadId)}`)
+      .then((res) => res.json())
+      .then((body: { success?: boolean; data?: LoadedDeckPayload }) => {
+        const deck = body?.data;
+        if (!body?.success || !deck) return;
+        setCharacter(deck.characterSlug);
+        loadDeck(deck.cards);
+        router.replace(`/deck?character=${deck.characterSlug}`, { scroll: false });
+      })
+      .catch(() => {
+        // 加载失败保持当前牌组不变
+      });
   }, [loadId, setCharacter, loadDeck, router]);
 
   return (
@@ -60,12 +74,12 @@ function DeckPageInner() {
       </header>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-        {/* 模块二 + 模块三：左侧组牌区，右侧统计面板（中段） */}
+        {/* 拖拽组牌区 + 统计面板 */}
         <DeckWorkbench catalog={catalog} loading={loading} />
         <DeckStats catalog={catalog} />
       </div>
 
-      {/* 模块四：存档与分享（页面底部） */}
+      {/* 存档与分享（页面底部） */}
       <div id="deck-save" className="mt-6">
         <DeckSave />
       </div>

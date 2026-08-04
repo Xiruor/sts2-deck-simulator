@@ -131,6 +131,9 @@ model DeckCard {
   cardId     Int // 外键，关联 Card
   quantity   Int     @default(1) // 该卡牌数量，1-5
   isUpgraded Boolean @default(false) // 是否已升级
+  // 工作台自定义数值（覆盖卡牌基础值，用于战斗模拟）：
+  // { damage, block, draw, damageUp, blockUp, drawUp } 均为可选数字
+  customValues Json?
 
   deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade) // 删除牌组时级联清理明细
   card Card @relation(fields: [cardId], references: [id])

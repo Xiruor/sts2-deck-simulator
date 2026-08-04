@@ -10,6 +10,7 @@ import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import GameCard, { type GameCardRarity, type GameCardType } from "./GameCard";
 import CardFilter, { type FilterState } from "./CardFilter";
+import { filterCards } from "@/lib/cardFilter";
 
 export interface CardGridItem {
   slug: string;
@@ -42,42 +43,6 @@ const GROUP_ORDER = [
 
 function parseList(value: string | null): string[] {
   return value ? value.split(",").filter(Boolean) : [];
-}
-
-// 特殊分类映射：无色=卡池、事件=稀有度EVENT、先古之民=稀有度ANCIENT、诅咒/任务=类型
-function matchesType(card: CardGridItem, t: string): boolean {
-  switch (t) {
-    case "攻击":
-      return card.type === "攻击";
-    case "技能":
-      return card.type === "技能";
-    case "能力":
-      return card.type === "能力";
-    case "无色":
-      return card.character === "无色";
-    case "诅咒":
-      return card.type === "诅咒";
-    case "事件":
-      return card.rarity === "事件";
-    case "任务":
-      return card.type === "任务";
-    case "状态":
-      return card.type === "状态";
-    case "先古之民":
-      return card.rarity === "先古之民";
-    default:
-      return false;
-  }
-}
-
-function matchesRarity(card: CardGridItem, r: string): boolean {
-  return card.rarity === r;
-}
-
-function matchesCost(card: CardGridItem, c: string): boolean {
-  if (c === "X") return card.cost === -1;
-  if (c === "4+") return card.cost !== null && card.cost >= 4;
-  return card.cost === Number(c);
 }
 
 export default function CardGrid({ cards }: { cards: CardGridItem[] }) {
@@ -114,25 +79,7 @@ export default function CardGrid({ cards }: { cards: CardGridItem[] }) {
     [state, router]
   );
 
-  const filtered = useMemo(
-    () =>
-      cards.filter((card) => {
-        // 搜索（卡牌名，AND）
-        if (state.search.trim() && !card.name.includes(state.search.trim())) return false;
-        // 角色（单选，AND）
-        if (state.character !== "全部" && card.character !== state.character) return false;
-        // 类型（OR）
-        if (state.types.length > 0 && !state.types.some((t) => matchesType(card, t))) return false;
-        // 稀有度（OR）
-        if (state.rarities.length > 0 && !state.rarities.some((r) => matchesRarity(card, r))) {
-          return false;
-        }
-        // 能耗（OR）
-        if (state.costs.length > 0 && !state.costs.some((c) => matchesCost(card, c))) return false;
-        return true;
-      }),
-    [cards, state]
-  );
+  const filtered = useMemo(() => filterCards(cards, state), [cards, state]);
 
   // 按固定顺序分组
   const groups = useMemo(() => {

@@ -13,7 +13,8 @@ export async function GET(request: Request) {
   const cost = searchParams.get("cost");
   const q = searchParams.get("q")?.trim();
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
-  const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 30));
+  // 上限 1000：支持客户端一次拉取全量卡池（牌组工作台卡池区与总览口径一致）
+  const limit = Math.min(1000, Math.max(1, Number(searchParams.get("limit")) || 30));
 
   try {
     const where: Prisma.CardWhereInput = {

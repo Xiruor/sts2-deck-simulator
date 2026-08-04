@@ -21,7 +21,7 @@ export const characters: Character[] = [
   {
     id: "silent",
     pool: "SILENT",
-    name: "沉默者",
+    name: "静默猎手",
     hp: 70,
     starterRelic: "蛇戒",
     starterRelicEffect: "战斗开始多抽2张",
@@ -29,7 +29,7 @@ export const characters: Character[] = [
       { name: "打击", count: 5 },
       { name: "防御", count: 5 },
       { name: "中和", count: 1 },
-      { name: "生还者", count: 1 },
+      { name: "生存者", count: 1 },
     ],
   },
   {
@@ -42,8 +42,8 @@ export const characters: Character[] = [
     starterDeck: [
       { name: "打击", count: 4 },
       { name: "防御", count: 4 },
-      { name: "闪击", count: 1 },
-      { name: "充能", count: 1 },
+      { name: "电击", count: 1 },
+      { name: "双重释放", count: 1 },
     ],
   },
   {
@@ -54,9 +54,10 @@ export const characters: Character[] = [
     starterRelic: "神圣之权",
     starterRelicEffect: "每回合开始获得1点临时能量",
     starterDeck: [
-      { name: "打击", count: 5 },
+      { name: "打击", count: 4 },
       { name: "防御", count: 4 },
-      { name: "辉星", count: 1 },
+      { name: "陨星", count: 1 },
+      { name: "崇拜", count: 1 },
     ],
   },
   {
@@ -68,8 +69,9 @@ export const characters: Character[] = [
     starterRelicEffect: "战斗开始时获得2层缚魂",
     starterDeck: [
       { name: "打击", count: 5 },
-      { name: "防御", count: 4 },
-      { name: "灾厄", count: 1 },
+      { name: "防御", count: 5 },
+      { name: "护卫", count: 1 },
+      { name: "出击", count: 1 },
     ],
   },
 ];
