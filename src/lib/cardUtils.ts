@@ -12,6 +12,12 @@ export function parseDrawCount(description: string): number {
   return m ? Number(m[1]) : 0;
 }
 
+/** 从卡牌描述解析回能数，如"获得2点能量"→2；解析不到返回 0 */
+export function parseEnergyCount(description: string): number {
+  const m = description.match(/获得(\d+)点能量/);
+  return m ? Number(m[1]) : 0;
+}
+
 /** 从卡牌描述解析伤害值，如"造成9点伤害"→9；解析不到返回 null */
 export function parseDamage(description: string): number | null {
   const m = description.match(/造成(\d+)点伤害/);

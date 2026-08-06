@@ -81,7 +81,7 @@ function NumInput({
         }
       }}
       onBlur={() => setText(value == null ? "" : String(value))}
-      className="h-5 w-11 rounded border border-border bg-background px-1 text-center text-[10px] text-foreground outline-none focus:border-accent"
+      className="h-7 w-14 rounded border border-border bg-background px-1 text-center text-sm text-foreground outline-none focus:border-accent"
     />
   );
 }
@@ -112,7 +112,7 @@ function QtyInput({
         if (!Number.isNaN(n) && n >= 1) onChange(n);
       }}
       onBlur={() => setText(String(value))}
-      className="h-5 w-8 rounded border border-border bg-background text-center text-[11px] outline-none focus:border-accent"
+      className="h-7 w-10 rounded border border-border bg-background text-center text-sm outline-none focus:border-accent"
     />
   );
 }
@@ -217,81 +217,99 @@ function DeckRow({
       onKeyDown={handleKeyDown}
       title="按 S 键切换编辑升级前 / 升级后数值"
       className={cn(
-        "flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-md border border-border bg-background px-1.5 py-1 outline-none focus:border-accent focus:ring-1 focus:ring-accent/40",
+        "flex flex-col gap-1.5 rounded-md border border-border bg-background px-2.5 py-2 outline-none focus:border-accent focus:ring-1 focus:ring-accent/40",
         isDragging && "opacity-40"
       )}
     >
-      {/* 拖拽手柄 */}
-      <button
-        type="button"
-        ref={setActivatorNodeRef}
-        {...listeners}
-        {...attributes}
-        className="flex h-5 w-4 shrink-0 cursor-grab items-center justify-center text-muted hover:text-foreground active:cursor-grabbing"
-        title="拖拽排序"
-      >
-        <span className="text-[10px] leading-none">⠿</span>
-      </button>
-      <span className="h-3.5 w-1 shrink-0 rounded-full" style={{ backgroundColor: typeColor }} />
-      <span className="min-w-0 flex-1 truncate text-xs">
-        {info.name}
-        {entry.upgraded && <span className="text-green-400">+</span>}
-      </span>
-      <span className="shrink-0 rounded bg-background-secondary px-1 py-px text-[10px] text-muted-foreground">
-        {info.cost ?? "-"}费
-      </span>
-
-      {/* 数量编辑 */}
-      <div className="flex shrink-0 items-center gap-0.5">
+      {/* 第一行：拖拽手柄 + 类型色条 + 卡名 + 费用 + 数量 + S 升级 + 删除 */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        {/* 拖拽手柄 */}
         <button
           type="button"
-          onClick={() => updateQuantity(entry.cardId, entry.count - 1)}
-          className="flex h-5 w-5 items-center justify-center rounded bg-background-secondary text-xs hover:bg-border"
+          ref={setActivatorNodeRef}
+          {...listeners}
+          {...attributes}
+          className="flex h-7 w-5 shrink-0 cursor-grab items-center justify-center text-muted hover:text-foreground active:cursor-grabbing"
+          title="拖拽排序"
         >
-          −
+          <span className="text-sm leading-none">⠿</span>
         </button>
-        <QtyInput
-          value={entry.count}
-          onChange={(n) => updateQuantity(entry.cardId, n)}
-        />
+        <span className="h-5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: typeColor }} />
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm",
+            entry.upgraded && "text-green-400"
+          )}
+        >
+          {info.name}
+          {entry.upgraded && <span className="text-green-400">+</span>}
+        </span>
+        <span className="shrink-0 rounded bg-background-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
+          {info.cost ?? "-"}费
+        </span>
+
+        {/* 数量编辑 */}
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => updateQuantity(entry.cardId, entry.count - 1)}
+            className="flex h-7 w-7 items-center justify-center rounded bg-background-secondary text-sm hover:bg-border"
+          >
+            −
+          </button>
+          <QtyInput
+            value={entry.count}
+            onChange={(n) => updateQuantity(entry.cardId, n)}
+          />
+          <button
+            type="button"
+            onClick={() => updateQuantity(entry.cardId, entry.count + 1)}
+            className="flex h-7 w-7 items-center justify-center rounded bg-background-secondary text-sm hover:bg-border"
+          >
+            +
+          </button>
+        </div>
+
+        {/* 升级快捷键 S：切换 升级前/升级后 数值编辑 */}
         <button
           type="button"
-          onClick={() => updateQuantity(entry.cardId, entry.count + 1)}
-          className="flex h-5 w-5 items-center justify-center rounded bg-background-secondary text-xs hover:bg-border"
+          onClick={() => setUpgraded(entry.cardId, !entry.upgraded)}
+          className={cn(
+            "flex h-7 w-9 shrink-0 items-center justify-center rounded border text-xs font-bold transition-colors",
+            entry.upgraded
+              ? "border-green-500/60 bg-green-500/15 text-green-400"
+              : "border-border bg-background-secondary text-muted hover:border-green-500/50 hover:text-green-400"
+          )}
+          title="升级快捷键 S：点击切换编辑升级前 / 升级后数值"
         >
-          +
+          S
+        </button>
+        <span
+          className={cn(
+            "shrink-0 text-xs",
+            entry.upgraded ? "text-green-400" : "text-muted-foreground"
+          )}
+        >
+          {entry.upgraded ? "升级后" : "升级前"}
+        </span>
+
+        {/* 删除 */}
+        <button
+          type="button"
+          title="移除该卡（也可拖到下方垃圾桶）"
+          onClick={() => updateQuantity(entry.cardId, 0)}
+          className="shrink-0 px-1 text-sm text-muted-foreground hover:text-red-400"
+        >
+          ×
         </button>
       </div>
 
-      {/* 升级快捷键 S：切换 升级前/升级后 数值编辑 */}
-      <button
-        type="button"
-        onClick={() => setUpgraded(entry.cardId, !entry.upgraded)}
-        className={cn(
-          "flex h-5 w-7 shrink-0 items-center justify-center rounded border text-[10px] font-bold transition-colors",
-          entry.upgraded
-            ? "border-green-500/60 bg-green-500/15 text-green-400"
-            : "border-border bg-background-secondary text-muted hover:border-green-500/50 hover:text-green-400"
-        )}
-        title="升级快捷键 S：点击切换编辑升级前 / 升级后数值"
-      >
-        S
-      </button>
-      <span
-        className={cn(
-          "shrink-0 text-[9px]",
-          entry.upgraded ? "text-green-400" : "text-muted-foreground"
-        )}
-      >
-        {entry.upgraded ? "升级后" : "基础"}
-      </span>
-
-      {/* 自定义数值：按类型限制可编辑项（攻击=攻+抽，技能=防+抽，能力=抽） */}
+      {/* 第二行：自定义数值（攻/防/抽）按类型限制，位于卡名下方 */}
       {canCustomize && (
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-background-secondary/60 px-2 py-1">
           {info.type === "攻击" && (
             <>
-              <span className="text-[9px] text-red-400/80">攻</span>
+              <span className="text-xs font-medium text-red-400/90">攻</span>
               <NumInput
                 value={entry.upgraded ? entry.damageUp : entry.damage}
                 placeholder={defaults.damage == null ? "" : String(defaults.damage)}
@@ -304,7 +322,7 @@ function DeckRow({
           )}
           {info.type === "技能" && (
             <>
-              <span className="text-[9px] text-blue-400/80">防</span>
+              <span className="text-xs font-medium text-blue-400/90">防</span>
               <NumInput
                 value={entry.upgraded ? entry.blockUp : entry.block}
                 placeholder={defaults.block == null ? "" : String(defaults.block)}
@@ -315,7 +333,7 @@ function DeckRow({
               />
             </>
           )}
-          <span className="text-[9px] text-cyan-400/80">抽</span>
+          <span className="text-xs font-medium text-cyan-400/90">抽</span>
           <NumInput
             value={entry.upgraded ? entry.drawUp : entry.draw}
             placeholder={defaults.draw == null ? "" : String(defaults.draw)}
@@ -326,16 +344,6 @@ function DeckRow({
           />
         </div>
       )}
-
-      {/* 删除 */}
-      <button
-        type="button"
-        title="移除该卡（也可拖到下方垃圾桶）"
-        onClick={() => updateQuantity(entry.cardId, 0)}
-        className="shrink-0 px-0.5 text-[11px] text-muted-foreground hover:text-red-400"
-      >
-        ×
-      </button>
     </li>
   );
 }
@@ -571,7 +579,7 @@ export default function DeckWorkbench({
                 items={deckEntries.map((d) => `deck-${d.entry.cardId}`)}
                 strategy={verticalListSortingStrategy}
               >
-                <ul className="max-h-[540px] space-y-1 overflow-y-auto pr-1">
+                <ul className="max-h-[700px] space-y-1 overflow-y-auto pr-1">
                   {deckEntries.map(({ entry, info }) => (
                     <DeckRow key={entry.cardId} entry={entry} info={info} />
                   ))}
@@ -606,10 +614,10 @@ export default function DeckWorkbench({
             </div>
           )}
           {activeDrag?.kind === "deck" && (
-            <div className="flex items-center gap-2 rounded-md border border-accent/60 bg-background px-2.5 py-1.5 shadow-xl">
-              <span className="h-3.5 w-1 rounded-full bg-accent" />
-              <span className="text-xs font-semibold">{activeDrag.name}</span>
-              <span className="text-[10px] text-muted-foreground">×{activeDrag.count}</span>
+            <div className="flex items-center gap-2 rounded-md border border-accent/60 bg-background px-3 py-2 shadow-xl">
+              <span className="h-5 w-1.5 rounded-full bg-accent" />
+              <span className="text-sm font-semibold">{activeDrag.name}</span>
+              <span className="text-xs text-muted-foreground">×{activeDrag.count}</span>
             </div>
           )}
         </DragOverlay>
