@@ -2,11 +2,18 @@
 
 /**
  * 管理后台 · 卡牌 CRUD 表格（Client Component）
- * - 列表展示全部卡牌，支持按名称/角色关键字过滤
- * - 新增 / 编辑共用一张表单，删除直接调用 Server Action
+ * - 列表展示全部卡牌，支持名称/角色关键字搜索 + 类型/稀有度/角色筛选
+ * - 新增 / 编辑共用受控表单对话框（useActionState 管理提交状态）
+ * - 删除需二次确认弹窗
  */
-import { useMemo, useState } from "react";
-import { createCard, deleteCard, updateCard } from "./actions";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import {
+  createCard,
+  deleteCard,
+  updateCard,
+  type CreateCardInput,
+} from "@/lib/actions/card";
+import type { CardRarity, CardType } from "@/generated/prisma/client";
 
 export interface AdminCardRow {
   id: number;
@@ -45,9 +52,28 @@ const RARITY_LABELS: Record<string, string> = {
   STATUS: "状态",
 };
 
-const EMPTY_FORM = {
+interface FormState {
+  ok?: boolean;
+  error?: string;
+}
+
+/** 受控表单字段（字符串态，便于输入） */
+interface CardFormValues {
+  name: string;
+  poolId: string;
+  cost: string;
+  type: string;
+  rarity: string;
+  damage: string;
+  block: string;
+  description: string;
+  exhaust: boolean;
+  upgradedDescription: string;
+}
+
+const EMPTY_FORM: CardFormValues = {
   name: "",
-  poolId: 1,
+  poolId: "1",
   cost: "",
   type: "ATTACK",
   rarity: "COMMON",
@@ -58,84 +84,110 @@ const EMPTY_FORM = {
   upgradedDescription: "",
 };
 
-export default function AdminCardsTable({
-  cards,
-  characters,
-}: {
-  cards: AdminCardRow[];
-  characters: { id: number; name: string }[];
-}) {
-  const [filter, setFilter] = useState("");
-  const [editing, setEditing] = useState<number | null>(null); // null = 新增，其余为卡牌 id
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [message, setMessage] = useState("");
+function rowToForm(row: AdminCardRow): CardFormValues {
+  return {
+    name: row.name,
+    poolId: String(row.poolId),
+    cost: row.cost === null ? "" : String(row.cost),
+    type: row.type,
+    rarity: row.rarity,
+    damage: row.damage === null ? "" : String(row.damage),
+    block: row.block === null ? "" : String(row.block),
+    description: row.description,
+    exhaust: row.exhaust,
+    upgradedDescription: row.upgradedDescription ?? "",
+  };
+}
 
-  const filtered = useMemo(
-    () =>
-      filter.trim()
-        ? cards.filter(
-            (c) =>
-              c.name.includes(filter.trim()) || c.characterName.includes(filter.trim())
-          )
-        : cards,
-    [cards, filter]
+/** 把 FormData 解析为 typed input（受控组件的 name 会同步进 FormData） */
+function parseForm(formData: FormData): CreateCardInput {
+  const costRaw = String(formData.get("cost") ?? "").trim();
+  const damageRaw = String(formData.get("damage") ?? "").trim();
+  const blockRaw = String(formData.get("block") ?? "").trim();
+  return {
+    name: String(formData.get("name") ?? "").trim(),
+    poolId: Number(formData.get("poolId")),
+    cost: costRaw === "" ? null : Number(costRaw),
+    type: String(formData.get("type")) as CardType,
+    rarity: String(formData.get("rarity")) as CardRarity,
+    damage: damageRaw === "" ? null : Number(damageRaw),
+    block: blockRaw === "" ? null : Number(blockRaw),
+    description: String(formData.get("description") ?? ""),
+    exhaust: formData.get("exhaust") === "on",
+    upgradedDescription:
+      String(formData.get("upgradedDescription") ?? "").trim() || null,
+  };
+}
+
+const inputCls =
+  "h-8 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-accent";
+const labelCls = "mb-1 block text-[11px] text-muted-foreground";
+
+/* ---------------- 新增 / 编辑对话框 ---------------- */
+
+function CardFormDialog({
+  mode,
+  initial,
+  characters,
+  onClose,
+  onSaved,
+}: {
+  mode: "create" | "edit";
+  initial: AdminCardRow | null;
+  characters: { id: number; name: string }[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState<CardFormValues>(
+    initial ? rowToForm(initial) : EMPTY_FORM
   );
 
-  const startCreate = () => {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-  };
+  const [state, formAction, pending] = useActionState(
+    async (_prev: FormState, formData: FormData): Promise<FormState> => {
+      const input = parseForm(formData);
+      const res =
+        mode === "edit" && initial
+          ? await updateCard(initial.id, input)
+          : await createCard(input);
+      return { ok: res.ok, error: res.ok ? undefined : res.error };
+    },
+    { ok: false }
+  );
 
-  const startEdit = (card: AdminCardRow) => {
-    setEditing(card.id);
-    setForm({
-      name: card.name,
-      poolId: card.poolId,
-      cost: card.cost === null ? "" : String(card.cost),
-      type: card.type,
-      rarity: card.rarity,
-      damage: card.damage === null ? "" : String(card.damage),
-      block: card.block === null ? "" : String(card.block),
-      description: card.description,
-      exhaust: card.exhaust,
-      upgradedDescription: card.upgradedDescription ?? "",
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const res =
-      editing === null
-        ? await createCard(formData)
-        : await updateCard(formData);
-    setMessage(res.ok ? "保存成功" : (res as { error?: string }).error ?? "保存失败");
-    if (res.ok) startCreate();
-  };
-
-  const set = (key: keyof typeof EMPTY_FORM, value: string | boolean | number) =>
+  const set = (key: keyof CardFormValues, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
 
-  const inputCls =
-    "h-8 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-accent";
-  const labelCls = "mb-1 block text-[11px] text-muted-foreground";
+  // 保存成功（revalidate 后）自动关闭对话框
+  useEffect(() => {
+    if (state.ok) {
+      const t = setTimeout(onSaved, 400);
+      return () => clearTimeout(t);
+    }
+  }, [state.ok, onSaved]);
 
   return (
-    <div className="space-y-4">
-      {/* 表单 */}
-      <div className="rounded-xl border border-border bg-background-secondary p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-bold">{editing === null ? "新增卡牌" : `编辑卡牌 #${editing}`}</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[90vh] w-full max-w-2xl overflow-auto rounded-xl border border-border bg-background-secondary p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-bold">
+            {mode === "edit" ? `编辑卡牌 #${initial?.id}` : "新增卡牌"}
+          </h2>
           <button
             type="button"
-            onClick={startCreate}
-            className="text-xs font-semibold text-accent hover:underline"
+            onClick={onClose}
+            className="text-xs text-muted-foreground hover:text-foreground"
           >
-            ＋ 新增
+            ✕
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {editing !== null && <input type="hidden" name="id" value={editing} />}
+
+        <form action={formAction} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <div>
             <label className={labelCls}>名称 *</label>
             <input
@@ -143,7 +195,7 @@ export default function AdminCardsTable({
               required
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
-              className={inputCls + " w-full"}
+              className={inputCls}
             />
           </div>
           <div>
@@ -151,8 +203,8 @@ export default function AdminCardsTable({
             <select
               name="poolId"
               value={form.poolId}
-              onChange={(e) => set("poolId", Number(e.target.value))}
-              className={inputCls + " w-full"}
+              onChange={(e) => set("poolId", e.target.value)}
+              className={inputCls}
             >
               {characters.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -167,7 +219,7 @@ export default function AdminCardsTable({
               name="cost"
               value={form.cost}
               onChange={(e) => set("cost", e.target.value)}
-              className={inputCls + " w-full"}
+              className={inputCls}
               placeholder="如 1"
             />
           </div>
@@ -177,7 +229,7 @@ export default function AdminCardsTable({
               name="type"
               value={form.type}
               onChange={(e) => set("type", e.target.value)}
-              className={inputCls + " w-full"}
+              className={inputCls}
             >
               {Object.entries(TYPE_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>
@@ -192,7 +244,7 @@ export default function AdminCardsTable({
               name="rarity"
               value={form.rarity}
               onChange={(e) => set("rarity", e.target.value)}
-              className={inputCls + " w-full"}
+              className={inputCls}
             >
               {Object.entries(RARITY_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>
@@ -207,7 +259,7 @@ export default function AdminCardsTable({
               name="damage"
               value={form.damage}
               onChange={(e) => set("damage", e.target.value)}
-              className={inputCls + " w-full"}
+              className={inputCls}
               placeholder="如 6"
             />
           </div>
@@ -217,7 +269,7 @@ export default function AdminCardsTable({
               name="block"
               value={form.block}
               onChange={(e) => set("block", e.target.value)}
-              className={inputCls + " w-full"}
+              className={inputCls}
               placeholder="如 5"
             />
           </div>
@@ -227,7 +279,7 @@ export default function AdminCardsTable({
               name="description"
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
-              className={inputCls + " w-full"}
+              className={inputCls}
             />
           </div>
           <div>
@@ -236,7 +288,7 @@ export default function AdminCardsTable({
               name="upgradedDescription"
               value={form.upgradedDescription}
               onChange={(e) => set("upgradedDescription", e.target.value)}
-              className={inputCls + " w-full"}
+              className={inputCls}
             />
           </div>
           <label className="flex h-8 items-center gap-1.5 text-xs text-muted-foreground">
@@ -249,18 +301,201 @@ export default function AdminCardsTable({
             />
             消耗
           </label>
+
+          {state.error && (
+            <p className="col-span-full rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              {state.error}
+            </p>
+          )}
+
           <div className="col-span-full flex items-center gap-3">
             <button
               type="submit"
-              className="h-8 rounded-md bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-[#8f73ff]"
+              disabled={pending}
+              className="h-8 rounded-md bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-[#8f73ff] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {editing === null ? "创建" : "保存修改"}
+              {pending ? "保存中..." : mode === "edit" ? "保存修改" : "创建"}
             </button>
-            {message && (
-              <span className="text-xs text-accent">{message}</span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-8 rounded-md border border-border px-4 text-xs text-muted-foreground hover:text-foreground"
+            >
+              取消
+            </button>
+            {state.ok && (
+              <span className="text-xs text-accent">保存成功，正在刷新…</span>
             )}
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- 删除确认弹窗 ---------------- */
+
+function DeleteConfirmDialog({
+  card,
+  onClose,
+  onDeleted,
+}: {
+  card: AdminCardRow;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [state, formAction, pending] = useActionState(
+    async (_prev: FormState, formData: FormData): Promise<FormState> => {
+      const res = await deleteCard(Number(formData.get("id")));
+      return { ok: res.ok, error: res.ok ? undefined : res.error };
+    },
+    { ok: false }
+  );
+
+  // 删除成功（revalidate 后）自动关闭弹窗
+  useEffect(() => {
+    if (state.ok) {
+      const t = setTimeout(onDeleted, 400);
+      return () => clearTimeout(t);
+    }
+  }, [state.ok, onDeleted]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl border border-border bg-background-secondary p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-sm font-bold">删除卡牌</h2>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          确认删除 <span className="font-semibold text-foreground">{card.name}</span>（#{card.id}）吗？此操作不可撤销。
+        </p>
+
+        {state.error && (
+          <p className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            {state.error}
+          </p>
+        )}
+
+        <div className="mt-4 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="h-8 rounded-md border border-border px-4 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+          >
+            取消
+          </button>
+          <form action={formAction}>
+            <input type="hidden" name="id" value={card.id} />
+            <button
+              type="submit"
+              disabled={pending}
+              className="h-8 rounded-md bg-red-500 px-4 text-xs font-semibold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {pending ? "删除中..." : "确认删除"}
+            </button>
+          </form>
+        </div>
+
+        {state.ok && (
+          <p className="mt-3 text-xs text-accent">已删除，正在刷新…</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- 主表格 ---------------- */
+
+export default function AdminCardsTable({
+  cards,
+  characters,
+}: {
+  cards: AdminCardRow[];
+  characters: { id: number; name: string }[];
+}) {
+  const [keyword, setKeyword] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [rarityFilter, setRarityFilter] = useState("");
+  const [characterFilter, setCharacterFilter] = useState("");
+  const [dialog, setDialog] = useState<{
+    mode: "create" | "edit";
+    card: AdminCardRow | null;
+  } | null>(null);
+  const [deleting, setDeleting] = useState<AdminCardRow | null>(null);
+  const [message, setMessage] = useState("");
+
+  const filtered = useMemo(() => {
+    const kw = keyword.trim().toLowerCase();
+    return cards.filter((c) => {
+      if (kw && !c.name.toLowerCase().includes(kw) && !c.characterName.toLowerCase().includes(kw)) {
+        return false;
+      }
+      if (typeFilter && c.type !== typeFilter) return false;
+      if (rarityFilter && c.rarity !== rarityFilter) return false;
+      if (characterFilter && c.poolId !== Number(characterFilter)) return false;
+      return true;
+    });
+  }, [cards, keyword, typeFilter, rarityFilter, characterFilter]);
+
+  return (
+    <div className="space-y-4">
+      {/* 搜索 + 筛选 */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-background-secondary p-3">
+        <input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder="按名称/角色搜索..."
+          className={inputCls + " w-48"}
+        />
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          className={inputCls + " w-28"}
+        >
+          <option value="">全部类型</option>
+          {Object.entries(TYPE_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <select
+          value={rarityFilter}
+          onChange={(e) => setRarityFilter(e.target.value)}
+          className={inputCls + " w-28"}
+        >
+          <option value="">全部稀有度</option>
+          {Object.entries(RARITY_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <select
+          value={characterFilter}
+          onChange={(e) => setCharacterFilter(e.target.value)}
+          className={inputCls + " w-32"}
+        >
+          <option value="">全部角色</option>
+          {characters.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => setDialog({ mode: "create", card: null })}
+          className="h-8 rounded-md bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-[#8f73ff]"
+        >
+          ＋ 新增卡牌
+        </button>
       </div>
 
       {/* 列表 */}
@@ -269,12 +504,7 @@ export default function AdminCardsTable({
           <span className="text-xs font-semibold text-muted-foreground">
             共 {filtered.length} 张卡牌
           </span>
-          <input
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="按名称/角色过滤..."
-            className={inputCls + " w-44"}
-          />
+          {message && <span className="text-xs text-accent">{message}</span>}
         </div>
         <div className="max-h-[560px] overflow-auto">
           <table className="w-full text-left text-xs">
@@ -310,22 +540,18 @@ export default function AdminCardsTable({
                     <div className="flex justify-end gap-3">
                       <button
                         type="button"
-                        onClick={() => startEdit(card)}
+                        onClick={() => setDialog({ mode: "edit", card })}
                         className="text-accent hover:underline"
                       >
                         编辑
                       </button>
-                      <form
-                        action={async (formData) => {
-                          const res = await deleteCard(formData);
-                          setMessage(res.ok ? "已删除" : (res as { error?: string }).error ?? "删除失败");
-                        }}
+                      <button
+                        type="button"
+                        onClick={() => setDeleting(card)}
+                        className="text-muted-foreground hover:text-red-400"
                       >
-                        <input type="hidden" name="id" value={card.id} />
-                        <button type="submit" className="text-muted-foreground hover:text-red-400">
-                          删除
-                        </button>
-                      </form>
+                        删除
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -334,6 +560,33 @@ export default function AdminCardsTable({
           </table>
         </div>
       </div>
+
+      {/* 新增 / 编辑对话框 */}
+      {dialog && (
+        <CardFormDialog
+          key={dialog.mode === "edit" ? `edit-${dialog.card?.id}` : "create"}
+          mode={dialog.mode}
+          initial={dialog.card}
+          characters={characters}
+          onClose={() => setDialog(null)}
+          onSaved={() => {
+            setMessage(dialog.mode === "edit" ? "保存成功" : "创建成功");
+            setDialog(null);
+          }}
+        />
+      )}
+
+      {/* 删除确认弹窗 */}
+      {deleting && (
+        <DeleteConfirmDialog
+          card={deleting}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => {
+            setMessage("已删除");
+            setDeleting(null);
+          }}
+        />
+      )}
     </div>
   );
 }

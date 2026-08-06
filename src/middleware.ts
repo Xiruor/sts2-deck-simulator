@@ -2,27 +2,36 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
 /**
- * 全局中间件（Task 8）
- * - 拦截 /admin/* 路由，未登录跳转 /admin/login
- * - 非 ADMIN 角色访问返回 403（会话补充 role 字段后生效）
+ * 管理后台路由保护中间件
+ * - 保护 /admin/* 路由，未登录跳转 /admin/login
+ * - 非 ADMIN 角色用户访问 /admin/* 返回 403
+ * - 已登录用户访问 /admin/login 直接进入 /admin/cards
+ *
+ * 注：使用 Node.js runtime（Next 15.5 稳定支持），以便 auth 安全加载 Prisma。
+ * 重定向 URL 基于请求 Host 头构造，避免 AUTH_URL 与实际端口不一致时跳错端口。
  */
 export default auth((req) => {
   const { pathname } = req.nextUrl;
-  const user = req.auth?.user as { role?: string } | null | undefined;
+  const user = req.auth?.user;
   const isLoggedIn = !!user;
   const isLoginPage = pathname === "/admin/login";
+
+  // 基于当前请求的 Host 构造绝对 URL（AUTH_URL 可能与 dev 端口不同）
+  const proto = req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "");
+  const host = req.headers.get("host") ?? req.nextUrl.host;
+  const origin = `${proto}://${host}`;
 
   if (pathname.startsWith("/admin")) {
     // 未登录（登录页除外）→ 跳转登录
     if (!isLoggedIn && !isLoginPage) {
-      return NextResponse.redirect(new URL("/admin/login", req.nextUrl));
+      return NextResponse.redirect(new URL("/admin/login", origin));
     }
     // 已登录访问登录页 → 直接进入后台
     if (isLoggedIn && isLoginPage) {
-      return NextResponse.redirect(new URL("/admin", req.nextUrl));
+      return NextResponse.redirect(new URL("/admin/cards", origin));
     }
-    // 非 ADMIN 角色 → 403（需在 lib/auth.ts 的 session callback 中注入 role）
-    if (isLoggedIn && user.role && user.role !== "ADMIN") {
+    // 非 ADMIN 角色 → 403
+    if (isLoggedIn && user.role !== "ADMIN") {
       return NextResponse.json({ error: "无权限访问管理后台" }, { status: 403 });
     }
   }
@@ -32,4 +41,5 @@ export default auth((req) => {
 
 export const config = {
   matcher: ["/admin/:path*"],
+  runtime: "nodejs",
 };

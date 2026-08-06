@@ -1,30 +1,17 @@
 "use client";
 
 /**
- * 管理后台登录页 —— 邮箱 + 密码表单，Server Action 处理登录。
+ * 管理后台登录页 —— 邮箱 + 密码表单
+ * 使用 useActionState 管理提交状态，Server Action 处理登录。
  */
-import { useState, type FormEvent } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { loginAction } from "./actions";
+import { loginAction, type LoginState } from "./actions";
+
+const initialState: LoginState = {};
 
 export default function AdminLoginPage() {
-  const router = useRouter();
-  const [error, setError] = useState("");
-  const [pending, setPending] = useState(false);
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setPending(true);
-    setError("");
-    const res = await loginAction(new FormData(e.currentTarget));
-    setPending(false);
-    if (res?.ok) {
-      router.push("/admin");
-    } else {
-      setError(res?.error ?? "登录失败");
-    }
-  };
+  const [state, formAction, pending] = useActionState(loginAction, initialState);
 
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-sm flex-col items-center justify-center gap-6 px-4">
@@ -34,7 +21,7 @@ export default function AdminLoginPage() {
       </div>
 
       <form
-        onSubmit={handleSubmit}
+        action={formAction}
         className="w-full space-y-3 rounded-xl border border-border bg-background-secondary p-6"
       >
         <div>
@@ -66,9 +53,12 @@ export default function AdminLoginPage() {
           />
         </div>
 
-        {error && (
-          <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-            {error}
+        {state.error && (
+          <p
+            role="alert"
+            className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400"
+          >
+            {state.error}
           </p>
         )}
 

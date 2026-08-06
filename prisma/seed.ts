@@ -1,6 +1,7 @@
-// 数据导入种子脚本：先插入角色，再插入卡牌
+// 数据导入种子脚本：先插入角色，再插入卡牌，最后创建管理员用户
 // 运行方式：pnpm prisma db seed （或 pnpm exec tsx prisma/seed.ts）
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import type { CardRarity, CardType } from "../src/generated/prisma/client";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
@@ -77,6 +78,22 @@ async function main() {
     total += result.count;
     console.log(`[seed] 角色 ${characterId}：插入 ${result.count} 张卡牌`);
   }
+
+  // 3. 创建/更新管理员用户（bcrypt 加密密码）
+  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@example.com";
+  const adminPassword = process.env.ADMIN_PASSWORD ?? "admin123";
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: { role: "ADMIN" },
+    create: {
+      email: adminEmail,
+      name: "管理员",
+      password: passwordHash,
+      role: "ADMIN",
+    },
+  });
+  console.log(`[seed] 管理员用户：${adminEmail}（密码已用 bcrypt 加密）`);
 
   console.log(`[seed] 完成，共插入 ${total} 张卡牌`);
   await prisma.$disconnect();
