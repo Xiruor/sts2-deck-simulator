@@ -80,4 +80,10 @@ export interface BattleState {
 export type BattleAction =
   | { type: "START"; deck: string[]; player: PlayerParams; enemy: EnemyParams; resolve: CardResolver }
   | { type: "PLAY_CARD"; cardId: string; resolve: CardResolver }
-  | { type: "END_TURN"; resolve: CardResolver };
+  | { type: "END_TURN"; resolve: CardResolver }
+  /** 战斗中实时修改双方参数：每回合攻击/格挡/抽牌/能量在下一回合生效，HP 不越界 */
+  | { type: "UPDATE_PARAMS"; player: PlayerParams; enemy: EnemyParams }
+  /** 战斗中直接修改当前 HP（限制在 0 ~ 生命上限；归零即判负/判胜） */
+  | { type: "UPDATE_HP"; target: "player" | "enemy"; hp: number }
+  /** 重新开始：回到待开始状态（可重新配置参数） */
+  | { type: "RESET" };

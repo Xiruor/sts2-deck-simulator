@@ -224,6 +224,33 @@ function finishDefeat(state: BattleState): BattleState {
   return state;
 }
 
+/** 战斗中实时更新双方参数：每回合攻击/格挡/抽牌/能量在下一回合生效，HP 不越界 */
+function updateParams(
+  state: BattleState,
+  player: BattleState["player"]["params"],
+  enemy: BattleState["enemy"]["params"]
+): BattleState {
+  const s = clone(state);
+  if (s.status === "IDLE") return s; // 待开始状态无战斗实体，参数由 START 读取
+  s.player.params = player;
+  s.player.maxHp = player.maxHp;
+  s.player.hp = Math.min(s.player.hp, player.maxHp);
+  s.enemy.params = enemy;
+  s.enemy.maxHp = enemy.maxHp;
+  s.enemy.hp = Math.min(s.enemy.hp, enemy.maxHp);
+  return s;
+}
+
+/** 战斗中直接修改当前 HP（限制在 0 ~ 生命上限；归零即判胜/判负） */
+function updateHp(state: BattleState, target: "player" | "enemy", hp: number): BattleState {
+  const s = clone(state);
+  if (s.status === "IDLE") return s;
+  const unit = target === "player" ? s.player : s.enemy;
+  unit.hp = Math.max(0, Math.min(unit.maxHp, hp));
+  if (unit.hp <= 0) return target === "enemy" ? finishVictory(s) : finishDefeat(s);
+  return s;
+}
+
 /** 引擎 reducer：接收当前状态与动作，返回新状态 */
 export function battleReducer(state: BattleState, action: BattleAction): BattleState {
   switch (action.type) {
@@ -233,6 +260,12 @@ export function battleReducer(state: BattleState, action: BattleAction): BattleS
       return playCard(state, action.cardId, action.resolve);
     case "END_TURN":
       return endTurn(state);
+    case "UPDATE_PARAMS":
+      return updateParams(state, action.player, action.enemy);
+    case "UPDATE_HP":
+      return updateHp(state, action.target, action.hp);
+    case "RESET":
+      return createInitialState();
     default:
       return state;
   }
