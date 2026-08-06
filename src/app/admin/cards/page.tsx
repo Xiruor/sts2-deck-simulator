@@ -10,7 +10,6 @@ export default async function AdminCardsPage() {
     prisma.card.findMany({
       include: { character: { select: { id: true, name: true } } },
       orderBy: { updatedAt: "desc" },
-      take: 500,
     }),
     prisma.character.findMany({ select: { id: true, name: true }, orderBy: { id: "asc" } }),
   ]);

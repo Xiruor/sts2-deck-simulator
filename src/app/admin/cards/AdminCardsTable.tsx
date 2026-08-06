@@ -2,7 +2,7 @@
 
 /**
  * 管理后台 · 卡牌 CRUD 表格（Client Component）
- * - 列表展示全部卡牌，支持名称/角色关键字搜索 + 类型/稀有度/角色筛选
+ * - 列表展示全部卡牌，筛选栏与卡牌总览完全一致（共享 CardFilter + filterCards 逻辑）
  * - 新增 / 编辑共用受控表单对话框（useActionState 管理提交状态）
  * - 删除需二次确认弹窗
  */
@@ -14,6 +14,8 @@ import {
   type CreateCardInput,
 } from "@/lib/actions/card";
 import type { CardRarity, CardType } from "@/generated/prisma/client";
+import CardFilter, { type FilterState } from "@/components/cards/CardFilter";
+import { filterCards } from "@/lib/cardFilter";
 
 export interface AdminCardRow {
   id: number;
@@ -418,10 +420,14 @@ export default function AdminCardsTable({
   cards: AdminCardRow[];
   characters: { id: number; name: string }[];
 }) {
-  const [keyword, setKeyword] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [rarityFilter, setRarityFilter] = useState("");
-  const [characterFilter, setCharacterFilter] = useState("");
+  const [filter, setFilter] = useState<FilterState>({
+    search: "",
+    character: "全部",
+    types: [],
+    rarities: [],
+    costs: [],
+    upgraded: "0",
+  });
   const [dialog, setDialog] = useState<{
     mode: "create" | "edit";
     card: AdminCardRow | null;
@@ -429,74 +435,27 @@ export default function AdminCardsTable({
   const [deleting, setDeleting] = useState<AdminCardRow | null>(null);
   const [message, setMessage] = useState("");
 
+  // 筛选逻辑与卡牌总览完全一致（共享 CardFilter + filterCards）
   const filtered = useMemo(() => {
-    const kw = keyword.trim().toLowerCase();
-    return cards.filter((c) => {
-      if (kw && !c.name.toLowerCase().includes(kw) && !c.characterName.toLowerCase().includes(kw)) {
-        return false;
-      }
-      if (typeFilter && c.type !== typeFilter) return false;
-      if (rarityFilter && c.rarity !== rarityFilter) return false;
-      if (characterFilter && c.poolId !== Number(characterFilter)) return false;
-      return true;
-    });
-  }, [cards, keyword, typeFilter, rarityFilter, characterFilter]);
+    const matched = filterCards(
+      cards.map((c) => ({
+        id: c.id,
+        name: c.name,
+        type: TYPE_LABELS[c.type] ?? c.type,
+        rarity: RARITY_LABELS[c.rarity] ?? c.rarity,
+        cost: c.cost,
+        character: c.characterName,
+      })),
+      filter
+    );
+    const ids = new Set(matched.map((m) => m.id));
+    return cards.filter((c) => ids.has(c.id));
+  }, [cards, filter]);
 
   return (
     <div className="space-y-4">
-      {/* 搜索 + 筛选 */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-background-secondary p-3">
-        <input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="按名称/角色搜索..."
-          className={inputCls + " w-48"}
-        />
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className={inputCls + " w-28"}
-        >
-          <option value="">全部类型</option>
-          {Object.entries(TYPE_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <select
-          value={rarityFilter}
-          onChange={(e) => setRarityFilter(e.target.value)}
-          className={inputCls + " w-28"}
-        >
-          <option value="">全部稀有度</option>
-          {Object.entries(RARITY_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <select
-          value={characterFilter}
-          onChange={(e) => setCharacterFilter(e.target.value)}
-          className={inputCls + " w-32"}
-        >
-          <option value="">全部角色</option>
-          {characters.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => setDialog({ mode: "create", card: null })}
-          className="h-8 rounded-md bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-[#8f73ff]"
-        >
-          ＋ 新增卡牌
-        </button>
-      </div>
+      {/* 筛选栏：与卡牌总览完全一致（共享 CardFilter + filterCards 逻辑） */}
+      <CardFilter state={filter} onChange={(patch) => setFilter((f) => ({ ...f, ...patch }))} />
 
       {/* 列表 */}
       <div className="rounded-xl border border-border bg-background-secondary">
@@ -504,7 +463,16 @@ export default function AdminCardsTable({
           <span className="text-xs font-semibold text-muted-foreground">
             共 {filtered.length} 张卡牌
           </span>
-          {message && <span className="text-xs text-accent">{message}</span>}
+          <div className="flex items-center gap-3">
+            {message && <span className="text-xs text-accent">{message}</span>}
+            <button
+              type="button"
+              onClick={() => setDialog({ mode: "create", card: null })}
+              className="h-8 rounded-md bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-[#8f73ff]"
+            >
+              ＋ 新增卡牌
+            </button>
+          </div>
         </div>
         <div className="max-h-[560px] overflow-auto">
           <table className="w-full text-left text-xs">
