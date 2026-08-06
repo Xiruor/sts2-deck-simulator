@@ -63,16 +63,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // 首次登录时把数据库中的 role 写入 token
+      // 首次登录时把数据库中的 role / id 写入 token
       if (user) {
         token.role = (user as { role?: string }).role;
+        token.sub = user.id; // 标准字段，用于会话中携带用户 id
       }
       return token;
     },
     async session({ session, token }) {
-      // 会话读取时把 token 中的 role 注入 session.user
+      // 会话读取时把 token 中的 role / id 注入 session.user
       if (session.user) {
         session.user.role = token.role as string;
+        if (token.sub) session.user.id = token.sub as string;
       }
       return session;
     },

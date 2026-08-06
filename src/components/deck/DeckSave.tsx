@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useDeckStore } from "@/store/deckStore";
 import { characters } from "@/data/characters";
 import type { DeckCardEntry } from "@/types/card";
@@ -22,6 +23,11 @@ interface SavedDeckSummary {
   totalCards: number;
   createdAt: string;
   updatedAt: string;
+}
+
+interface SessionUser {
+  name?: string | null;
+  email?: string | null;
 }
 
 /** Base64URL 编码牌组数据（cardId/count/upgraded 均为 ASCII，btoa 安全） */
@@ -48,8 +54,29 @@ export default function DeckSave() {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // 登录态：undefined=加载中 null=未登录 user=已登录
+  const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/session")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((session) => {
+        if (!cancelled) setUser(session?.user ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isLoggedIn = user !== null && user !== undefined;
 
   const refresh = useCallback(async () => {
+    // 未登录无需拉取（后端也会返回空列表）
+    if (user === undefined) return;
     try {
       const res = await fetch("/api/decks");
       const body = await res.json();
@@ -57,7 +84,7 @@ export default function DeckSave() {
     } catch {
       // 列表拉取失败静默处理
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     refresh();
@@ -77,6 +104,10 @@ export default function DeckSave() {
 
   const handleSave = async () => {
     if (cards.length === 0) return;
+    if (!isLoggedIn) {
+      setError("请先登录后再保存到云端");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -151,16 +182,30 @@ export default function DeckSave() {
               placeholder={`方案名（默认：${charName}牌组）`}
               className="h-8 flex-1 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-accent"
             />
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={cards.length === 0 || saving}
-              className="h-8 rounded-md bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-[#8f73ff] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {saving ? "保存中..." : "保存方案"}
-            </button>
+            {isLoggedIn ? (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={cards.length === 0 || saving}
+                className="h-8 rounded-md bg-accent px-4 text-xs font-semibold text-white transition-colors hover:bg-[#8f73ff] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {saving ? "保存中..." : "保存方案"}
+              </button>
+            ) : (
+              <Link
+                href="/login?callbackUrl=/deck"
+                className="h-8 shrink-0 rounded-md border border-accent/50 px-3 text-xs font-semibold text-accent transition-colors hover:bg-accent-soft"
+              >
+                登录后保存
+              </Link>
+            )}
           </div>
           {error && <p className="text-[11px] text-red-400">{error}</p>}
+          {!isLoggedIn && (
+            <p className="text-[11px] text-muted-foreground">
+              登录后可将方案保存到云端（分享链接无需登录）。
+            </p>
+          )}
 
           {/* 分享链接 */}
           <div className="rounded-md border border-border bg-background p-3">
@@ -194,9 +239,18 @@ export default function DeckSave() {
             已保存方案（{saves.length}）
           </h3>
           {saves.length === 0 ? (
-            <p className="py-8 text-center text-xs text-muted-foreground">
-              暂无已保存方案，组好牌后点击「保存方案」
-            </p>
+            isLoggedIn ? (
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                暂无已保存方案，组好牌后点击「保存方案」
+              </p>
+            ) : (
+              <p className="py-8 text-center text-xs text-muted-foreground">
+                <Link href="/login" className="text-accent hover:underline">
+                  登录
+                </Link>
+                {" 后可查看并同步你的云端牌组"}
+              </p>
+            )
           ) : (
             <ul className="max-h-56 space-y-1 overflow-y-auto pr-1">
               {saves.map((deck) => (

@@ -42,9 +42,15 @@ function mapDeckCard(dc: {
   };
 }
 
-// POST /api/decks —— 保存牌组（匿名可存，登录后关联用户）
+// POST /api/decks —— 保存牌组（需登录，牌组归属当前用户）
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+    const userId = session?.user?.id ? Number(session.user.id) : null;
+    if (!userId) {
+      return fail("请先登录后再保存牌组", 401);
+    }
+
     const body = await request.json();
     const name = typeof body?.name === "string" && body.name.trim() ? body.name.trim() : "";
     const characterSlug = body?.characterSlug as string | undefined;
@@ -56,14 +62,6 @@ export async function POST(request: Request) {
     }
     if (cards.some((c) => !c.cardId || !Number.isInteger(c.count) || c.count <= 0)) {
       return fail("cards 格式不正确", 400);
-    }
-
-    // 可选关联登录用户
-    const session = await auth();
-    let userId: number | null = null;
-    if (session?.user?.email) {
-      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-      userId = user?.id ?? null;
     }
 
     const deck = await prisma.deck.create({
@@ -100,10 +98,17 @@ export async function POST(request: Request) {
   }
 }
 
-// GET /api/decks —— 已保存牌组列表（概要）
+// GET /api/decks —— 当前登录用户的牌组列表（概要），未登录返回空列表
 export async function GET() {
   try {
+    const session = await auth();
+    const userId = session?.user?.id ? Number(session.user.id) : null;
+    if (!userId) {
+      return Response.json(ok([]));
+    }
+
     const decks = await prisma.deck.findMany({
+      where: { userId },
       include: { character: { select: { name: true } }, deckCards: true },
       orderBy: { updatedAt: "desc" },
       take: 100,

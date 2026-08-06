@@ -18,11 +18,17 @@ export default async function DecksPage() {
         <div className="mt-6 rounded-xl border border-border bg-background-secondary p-10 text-center">
           <p className="text-sm text-muted-foreground">登录后可跨设备同步牌组。</p>
           <Link
-            href="/admin/login"
+            href="/login"
             className="mt-4 inline-block rounded-lg bg-accent px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#8f73ff]"
           >
             去登录
           </Link>
+          <p className="mt-3 text-xs text-muted-foreground">
+            还没有账号？
+            <Link href="/register" className="ml-1 text-accent hover:underline">
+              立即注册
+            </Link>
+          </p>
         </div>
       </main>
     );

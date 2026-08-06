@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { fail, ok } from "@/lib/utils";
+import { auth } from "@/lib/auth";
 import { CHARACTER_NAME_TO_SLUG } from "@/data/characters";
 import type { DeckCardEntry, DeckCardValues } from "@/types/card";
 
@@ -15,7 +16,7 @@ function fromCustomValues(json: unknown): DeckCardValues {
   return out;
 }
 
-// GET /api/decks/[id] —— 加载已保存的牌组（含自定义数值）
+// GET /api/decks/[id] —— 加载已保存的牌组（仅限本人，含自定义数值）
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -25,6 +26,9 @@ export async function GET(
   if (!Number.isInteger(deckId) || deckId <= 0) return fail("无效的牌组ID", 400);
 
   try {
+    const session = await auth();
+    const userId = session?.user?.id ? Number(session.user.id) : null;
+
     const deck = await prisma.deck.findUnique({
       where: { id: deckId },
       include: {
@@ -32,7 +36,8 @@ export async function GET(
         deckCards: true,
       },
     });
-    if (!deck) return fail("牌组不存在", 404);
+    // 不存在或非本人所有 → 统一返回 404，避免泄露牌组存在性
+    if (!deck || !userId || deck.userId !== userId) return fail("牌组不存在", 404);
 
     const cards: DeckCardEntry[] = deck.deckCards.map((dc) => ({
       cardId: String(dc.cardId),
@@ -58,7 +63,7 @@ export async function GET(
   }
 }
 
-// DELETE /api/decks/[id] —— 删除已保存的牌组
+// DELETE /api/decks/[id] —— 删除已保存的牌组（仅限本人）
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -68,6 +73,13 @@ export async function DELETE(
   if (!Number.isInteger(deckId) || deckId <= 0) return fail("无效的牌组ID", 400);
 
   try {
+    const session = await auth();
+    const userId = session?.user?.id ? Number(session.user.id) : null;
+    if (!userId) return fail("请先登录", 401);
+
+    const deck = await prisma.deck.findUnique({ where: { id: deckId }, select: { userId: true } });
+    if (!deck || deck.userId !== userId) return fail("牌组不存在", 404);
+
     await prisma.deck.delete({ where: { id: deckId } });
     return Response.json(ok({ id: deckId }));
   } catch (error) {

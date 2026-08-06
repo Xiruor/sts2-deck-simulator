@@ -8,6 +8,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import AuthButton from "./AuthButton";
 
 const NAV_ITEMS = [
   { href: "/cards", label: "卡牌总览" },
@@ -59,6 +60,9 @@ export default function Navbar() {
             </li>
           ))}
         </ul>
+
+        {/* 用户区：登录/注册 或 当前用户 + 退出 */}
+        <AuthButton />
 
         {/* 汉堡按钮（移动端） */}
         <button
