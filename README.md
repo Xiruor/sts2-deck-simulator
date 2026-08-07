@@ -32,7 +32,7 @@
 
 | 分类 | 技术 |
 | --- | --- |
-| 前端框架 | [Next.js](https://nextjs.org) 15（App Router + Turbopack）、[React](https://react.dev) 19 |
+| 全栈框架 | [Next.js](https://nextjs.org) 15（App Router + Turbopack）、[React](https://react.dev) 19 |
 | 语言 | TypeScript |
 | 样式 | Tailwind CSS 4 |
 | 数据库 | Prisma 7 + MySQL / MariaDB |
