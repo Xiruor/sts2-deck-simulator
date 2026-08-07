@@ -45,9 +45,9 @@ export default function RootLayout({
               >
                 管理后台
               </a>
-              {/* TODO: 替换为项目实际仓库地址 */}
+              {/* GitHub 链接：作者主页 */}
               <a
-                href="https://github.com/"
+                href="https://github.com/Xiruor"
                 target="_blank"
                 rel="noreferrer"
                 className="text-muted transition-colors hover:text-accent"
