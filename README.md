@@ -4,8 +4,7 @@
 
 ![logo](public/images/sts2/logo.png)
 
-### :点击链接访问项目网站：page_facing_up: [1](https://Xiruor.github.io/tag.html) 
-
+# 项目网站 :link: https://sts2deck.ccwu.cc/
 ## ✨ 功能特性
 
 ### 卡牌总览
