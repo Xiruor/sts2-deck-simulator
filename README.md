@@ -4,6 +4,8 @@
 
 ![logo](public/images/sts2/logo.png)
 
+### :点击链接访问项目网站：page_facing_up: [1](https://Xiruor.github.io/tag.html) 
+
 ## ✨ 功能特性
 
 ### 卡牌总览
@@ -41,48 +43,6 @@
 | 图表 | ECharts |
 | 包管理 | pnpm |
 
-## 🚀 快速开始
-
-### 环境要求
-- Node.js 18+（推荐 20+）
-- pnpm（或 npm）
-- MySQL / MariaDB 数据库
-
-### 安装与启动
-
-```bash
-# 1. 安装依赖
-pnpm install
-
-# 2. 配置环境变量（.env，参考项目内的 .env 示例）
-# DATABASE_URL="mysql://user:password@localhost:3306/sts2_deck_simulator"
-
-# 3. 生成 Prisma Client 并应用数据库迁移
-pnpm db:generate
-pnpm db:deploy
-
-# 4. （可选）导入卡牌种子数据
-pnpm prisma db seed
-
-# 5. 启动开发服务器
-pnpm dev
-```
-
-打开 [http://localhost:3000](http://localhost:3000) 即可访问。
-
-> 也可以直接双击根目录的 `牌组模拟器.bat` 一键启动（自动处理端口冲突并打开浏览器）。
-
-### 常用脚本
-
-| 命令 | 说明 |
-| --- | --- |
-| `pnpm dev` | 启动开发服务器（Turbopack） |
-| `pnpm build` | 生产构建 |
-| `pnpm start` | 启动生产服务器 |
-| `pnpm lint` | ESLint 检查 |
-| `pnpm db:migrate` | 开发环境迁移（Prisma Migrate） |
-| `pnpm db:deploy` | 部署环境迁移 |
-| `pnpm db:studio` | 打开 Prisma Studio 可视化查看数据 |
 
 ## 📁 项目结构
 
