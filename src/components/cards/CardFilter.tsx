@@ -4,6 +4,7 @@
  * 卡牌筛选面板 —— 受控组件。
  * 筛选状态由父级（CardGrid）通过 useSearchParams / useRouter 管理并同步到 URL。
  */
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 // 角色（单选）：全部 + 5 个角色
@@ -25,6 +26,83 @@ export interface FilterState {
   rarities: string[];
   costs: string[];
   upgraded: "0" | "1"; // 0=升级前（默认），1=升级后
+}
+
+/**
+ * 搜索输入框：
+ * - 本地即时输入 + 防抖（250ms）向上同步，避免每次按键触发昂贵的 URL 更新（backspace 卡顿）
+ * - 正确处理中文输入法组合输入（composition 期间不上报，避免拼音混入）
+ * - 外部值变化（如重置筛选）时同步回本地
+ */
+function SearchInput({
+  value,
+  onChange,
+  className,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState(value);
+  const composingRef = useRef(false); // 中文输入法组合中
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // 外部 value 变化（重置/导航）时同步本地显示
+  useEffect(() => {
+    setText(value);
+  }, [value]);
+
+  // 卸载时清理防抖定时器
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const scheduleSync = (v: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      onChangeRef.current(v);
+    }, 250);
+  };
+
+  // 组合结束立即上报最终值（不等防抖）
+  const syncNow = (v: string) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    onChangeRef.current(v);
+  };
+
+  return (
+    <input
+      value={text}
+      placeholder={placeholder}
+      className={className}
+      onChange={(e) => {
+        const v = e.target.value;
+        setText(v);
+        if (composingRef.current) return; // 组合输入期间只更新显示，不上报
+        scheduleSync(v);
+      }}
+      onCompositionStart={() => {
+        composingRef.current = true;
+      }}
+      onCompositionEnd={(e) => {
+        composingRef.current = false;
+        // React 18 合成事件里 currentTarget 值已是组合后结果
+        const v = (e.target as HTMLInputElement).value;
+        setText(v);
+        syncNow(v);
+      }}
+    />
+  );
 }
 
 // 可切换的筛选 chip
@@ -104,10 +182,10 @@ export default function CardFilter({
   return (
     <div className="mb-8 space-y-2 rounded-lg border border-border bg-background-secondary p-3 shadow-sm">
       <div className="flex flex-wrap items-center gap-3">
-        {/* 搜索 */}
-        <input
+        {/* 搜索：本地输入 + 防抖 + 中文输入法组合支持 */}
+        <SearchInput
           value={state.search}
-          onChange={(e) => onChange({ search: e.target.value })}
+          onChange={(v) => onChange({ search: v })}
           placeholder="搜索卡牌名称..."
           className="h-7 w-44 rounded-md border border-border bg-background px-2 text-xs outline-none focus:border-blue-500"
         />

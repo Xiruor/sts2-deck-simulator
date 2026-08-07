@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: "/deck", label: "组牌工作台" },
   { href: "/battle", label: "战斗模拟" },
   { href: "/decks", label: "我的牌组" },
+  { href: "/links", label: "更多网站" },
 ];
 
 export default function Navbar() {
@@ -34,9 +35,12 @@ export default function Navbar() {
           className="flex shrink-0 items-center gap-2"
           onClick={() => setOpen(false)}
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[#7c5cff] to-[#4a2fd0] text-sm font-black text-white">
-            牌
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/sts2/logo.png"
+            alt="STS2 牌组模拟器"
+            className="h-7 w-7 rounded-md object-contain"
+          />
           <span className="hidden text-sm font-bold tracking-wide sm:inline">
             STS2 牌组模拟器
           </span>

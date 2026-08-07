@@ -230,14 +230,14 @@ export default function DeckStats({ catalog }: { catalog: CardInfo[] }) {
     { label: "升级卡数", value: String(stats.upgraded) },
     { label: "平均费伤比", value: formatRatio(stats.avgDmgPerCost) },
     { label: "平均费防比", value: formatRatio(stats.avgBlockPerCost) },
-    { label: "循环周期", value: stats.cyclePeriod === null ? "—" : stats.cyclePeriod.toFixed(2) },
+    { label: "循环周期", value: stats.cyclePeriod === null ? "—" : `${stats.cyclePeriod.toFixed(2)} 回合` },
   ];
 
   return (
     <div className="flex flex-col gap-4">
       {/* 费用统计 6 项 */}
       <div className="rounded-lg border border-border bg-background-secondary p-3">
-        <h3 className="mb-2 text-sm font-semibold">费用统计</h3>
+        <h3 className="mb-2 text-sm font-semibold">牌组信息（数据仅供参考）</h3>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {metricItems.map((m) => (
             <div

@@ -12,7 +12,6 @@
  * - 参数可随时修改：每回合攻击/格挡/抽牌/能量在下一回合生效，HP 即时生效
  */
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import Link from "next/link";
 import { useDeckStore } from "@/store/deckStore";
 import { useCardCatalog, type CardInfo } from "@/hooks/useCardCatalog";
 import GameCard from "@/components/cards/GameCard";
@@ -343,7 +342,7 @@ export default function BattleArena() {
 
       {/* 参数修改提示 */}
       <p className="mb-3 text-[11px] text-muted-foreground">
-        参数可随时修改：HP 即时生效；每回合攻击 / 格挡 / 抽牌 / 能量在下一回合开始生效。
+        参数可随时修改：HP 即时生效；每回合攻击 / 格挡 / 抽牌 / 能量在下一回合开始生效。&nbsp;&nbsp;注：当前战斗模拟器只实现基础功能，无遗物/药水/角色/怪物/Buff系统
       </p>
 
       {/* 2. 手牌区域（点击出牌） */}
@@ -354,9 +353,7 @@ export default function BattleArena() {
         </h2>
         {battle.status === "IDLE" ? (
           <p className="py-8 text-center text-xs text-muted-foreground">
-            尚未开始战斗。可先在
-            <Link href="/deck" className="mx-1 text-accent hover:underline">组牌工作台</Link>
-            组好牌组，再回来开始模拟。
+            在牌组工作台组好卡牌后，点击“开始模拟”
           </p>
         ) : battle.hand.length === 0 ? (
           <p className="py-6 text-center text-xs text-muted-foreground">手牌为空</p>

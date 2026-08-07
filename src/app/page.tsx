@@ -8,29 +8,38 @@ import Link from "next/link";
  */
 
 // 角色展示配置（与 prisma/seed.ts 的主题色一致）
-const CHARACTER_DISPLAY: { slug: string; name: string; hp: number; color: string }[] = [
-  { slug: "ironclad", name: "铁甲战士", hp: 80, color: "#e5484d" },
-  { slug: "silent", name: "静默猎手", hp: 70, color: "#22c55e" },
-  { slug: "defect", name: "故障机器人", hp: 75, color: "#3b82f6" },
-  { slug: "regent", name: "储君", hp: 75, color: "#d4a017" },
-  { slug: "necrobinder", name: "亡灵契约师", hp: 66, color: "#8b5cf6" },
+const CHARACTER_DISPLAY: { slug: string; name: string; color: string }[] = [
+  { slug: "ironclad", name: "铁甲战士", color: "#e5484d" },
+  { slug: "silent", name: "静默猎手", color: "#22c55e" },
+  { slug: "defect", name: "故障机器人", color: "#3b82f6" },
+  { slug: "regent", name: "储君", color: "#d4a017" },
+  { slug: "necrobinder", name: "亡灵契约师", color: "#8b5cf6" },
 ];
+
+// 角色立绘图片（位于 public/images/sts2）
+const CHARACTER_IMAGE: Record<string, string> = {
+  ironclad: "/images/sts2/ironclad.webp",
+  silent: "/images/sts2/silent.webp",
+  defect: "/images/sts2/defect.webp",
+  regent: "/images/sts2/regent.webp",
+  necrobinder: "/images/sts2/necrobinder.webp",
+};
 
 // 三大核心功能
 const FEATURES = [
   {
-    title: "拖拽组牌",
-    desc: "从卡池拖拽卡牌构筑牌组，同名卡可多张，实时类型速览与超上限提示。",
-    href: "/deck",
+    title: "卡牌总览",
+    desc: "浏览全部卡牌，按角色、类型、稀有度、能耗筛选。",
+    href: "/cards",
   },
   {
-    title: "统计分析",
-    desc: "费用曲线、类型/稀有度分布、费伤比/费防比，随牌组变动即时重绘。",
+    title: "组牌分析",
+    desc: "查看牌组的平均费用、费伤比、费防比、循环周期等信息。",
     href: "/deck",
   },
   {
     title: "战斗模拟",
-    desc: "回合制战斗引擎：抽牌、出牌、遗物触发与 Buff/Debuff 结算。",
+    desc: "进行简单的战斗模拟，验证卡牌出现回合、启动时间、卡牌强度。",
     href: "/battle",
   },
 ];
@@ -46,10 +55,6 @@ export default function Home() {
         <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
           杀戮尖塔2 <span className="text-accent">牌组模拟器</span>
         </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-          面向全栈作品集的卡牌构筑工具：覆盖 5 个角色 567+ 张卡牌的筛选、拖拽组牌、
-          统计分析与单局战斗模拟，从构组到验算一站式完成。
-        </p>
         <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/deck"
@@ -76,14 +81,13 @@ export default function Home() {
               href={`/deck?character=${c.slug}`}
               className="group flex flex-col items-center gap-2 rounded-xl border border-border bg-background-secondary p-5 transition-all hover:-translate-y-1 hover:border-accent/60 hover:shadow-lg hover:shadow-accent/10"
             >
-              <span
-                className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-black text-white"
-                style={{ backgroundColor: c.color, boxShadow: `0 0 16px ${c.color}66` }}
-              >
-                {c.name.slice(0, 1)}
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={CHARACTER_IMAGE[c.slug]}
+                alt={c.name}
+                className="h-14 w-14 rounded-full object-cover"
+              />
               <span className="text-sm font-semibold group-hover:text-accent">{c.name}</span>
-              <span className="text-xs text-muted">生命值 {c.hp}</span>
             </Link>
           ))}
         </div>

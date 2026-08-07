@@ -64,9 +64,6 @@ function DeckPageInner() {
       <header className="mb-5 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold">牌组工作台</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            拖拽组牌 → 实时统计 → 存档分享，一站完成
-          </p>
         </div>
         <span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
           当前角色：{character}
